@@ -1,6 +1,7 @@
 ## Preliminary Substrate based blockchain for tokenizing water allocations
 based off [substrate-node-template](https://github.com/substrate-developer-hub/substrate-node-template) + [recipes](https://substrate.dev/recipes/introduction.html)
 
+---
 ### Pallets  
 [info](https://www.substrate.io/kb/runtime/pallets)
 * __`pallets/allocator`__ - creator of allocations, utilizing data created by [data_logix](https://github.com/Greenetwork/Basin_Logix/tree/master/data_logix) collected via offchain workers (IPFS), will start with allocation dependent on apn area, transition to `pallets/water_master`
@@ -9,6 +10,7 @@ based off [substrate-node-template](https://github.com/substrate-developer-hub/s
 * __`pallets/extraction`__ - burning of water allocation tokens based on well pumping
 * __`pallets/market`__ - water market allocation decentralized exchange via substrate contract pallet (ink! smart contracts), involved in the selling/buying of AnnualAllocation balances or futures of yet realized/cemented Annual Allocations
 
+---
 ### Data Flow
 __allocator related__
 * WebApp User input (APNs owned + wells owned) --> conduit.py --> .json uploaded to IPFS
@@ -17,6 +19,7 @@ __allocator related__
 
 __market related__
 
+---
 ### Data Locations  
 __On Chain__  
 * `struct` AnnualAllocation - apn (Vec array or hash?), balance (acre-feet, unsigned int), year of allocation: annual total_allocation (map, u32:u32), reasoning for annual allocation (governance voting outcome transaction hash)  
@@ -31,6 +34,7 @@ __Oracles__
 __Web App__  
 * apns owned, wells owned
 
+---
 ### Missing Utility  
 * outside investment mechanism (non land owners)
   * Maybe just BLX stock
