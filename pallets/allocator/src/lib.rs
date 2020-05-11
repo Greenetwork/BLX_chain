@@ -21,10 +21,7 @@ use frame_support::{decl_event, decl_module, decl_storage,
 	sp_runtime::sp_std::str as str,
 };
 use frame_system::{self as system, ensure_signed};
-//use frame_support::dispatch::Vec;
 use frame_support::inherent::Vec;
-
-//use simple_json2::{ json::{ JsonObject, JsonValue }, parse_json };
 
 #[cfg(test)]
 mod mock;
@@ -36,17 +33,6 @@ mod tests;
 pub trait Trait: balances::Trait + system::Trait {
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
-
-//#[derive(Encode, Decode, Clone, Default, RuntimeDebug)] //strings are clone not copy
-//pub struct AnnualAllocation<Balance, Hash> {
-//	apn: Hash,
-//	balance: Balance,
-//	year: u32,
-//	total_allocation: u32,
-//	reasoning: Hash, // will change later to txn 
-//}
-
-//type AnnualAllocationOf<T> = AnnualAllocation<<T as balances::Trait>::Balance, <T as system::Trait>::Hash>;
 
 #[derive(Encode, Decode, Clone, Default, RuntimeDebug)]
 pub struct NonFungibleToken {
@@ -60,17 +46,7 @@ pub type APN = Vec<u8>;
 
 // This pallet's storage items.
 decl_storage! {
-	// It is important to update your storage name so that your pallet's
-	// storage items are isolated from other pallets.
-	// ---------------------------------vvvvvvvvvvvvvv
 	trait Store for Module<T: Trait> as NestedStructs {
-		// info on the annual allocaiton of a particular apn
-		//AnnualAllocationbyapn get(fn annual_allocation_by_apn):
-		//	map hasher(blake2_128_concat) T::Hash => AnnualAllocationOf<T>;
-		// info on the non fungible token (digital water apn)
-		//NonFungibleTokenbyapn get(fn non_fungible_token_by_apn):
-		//	map hasher(blake2_128_concat) T::Hash => NonFungibleToken<T::Balance, T::Hash>;
-
 		// the NonFungibleToken struct owned by a particular accountID of the system
 		OwnedAllo get(fn allo_of_owner):
 			double_map hasher(blake2_128_concat) APN, hasher(blake2_128_concat) T::AccountId => NonFungibleToken;
@@ -81,11 +57,10 @@ decl_storage! {
 decl_event!(
 	pub enum Event<T>
 	where
-		<T as system::Trait>::Hash,
-		<T as balances::Trait>::Balance
+		<T as system::Trait>::AccountId
 	{
 		/// field of the apn and the allocation fields
-		NewNonFungibleTokenByNewAllocation(Hash, Hash, Balance, u32, u32, Hash),
+		NewNonFungibleTokenByNewAllocation(AccountId,Vec<u8>,Vec<u8>),
 	}
 );
 
@@ -115,6 +90,7 @@ decl_module! {
 		fn set_annual_allocation(origin, apn: APN, metadata: Vec<u8>) -> DispatchResult {
 			let user = ensure_signed(origin)?;
 			//let apn_clone = apn.clone();
+			let metadata_clone = metadata.clone();
 			//let annual_allocation = AnnualAllocation {
 			//				apn: apn.clone(),
 			//				balance,
@@ -131,11 +107,12 @@ decl_module! {
 									//annual_allocation,
 			};
 			//<NonFungibleTokenbyapn<T>>::insert(apn.clone(), non_fungible_token);
-			//Self::deposit_event(RawEvent::NewNonFungibleTokenByNewAllocation(
-			//	apn.clone(), apn.clone(), balance, year, total_allocation, reasoning
-			//));
 
-			<OwnedAllo<T>>::insert(apn,user,non_fungible_token);
+
+			<OwnedAllo<T>>::insert(apn.clone(),user.clone(),non_fungible_token);
+			Self::deposit_event(RawEvent::NewNonFungibleTokenByNewAllocation(
+				user.clone(), apn.clone(), metadata_clone 
+			));
 
 			Ok(())
 		}
