@@ -1,0 +1,38 @@
+[package]
+name = "blx-doublemap"
+version = "2.0.0-alpha.8"
+authors = ["4meta5"]
+edition = "2018"
+license = "GPL-3.0-or-later"
+
+[features]
+default = ['std']
+std = [
+    'parity-scale-codec/std',
+    'frame-support/std',
+    'frame-system/std',
+    'balances/std',
+    'sp-runtime/std',
+    'sp-std/std'
+]
+#cargo-features = ["resolver"]
+
+[dependencies]
+parity-scale-codec = { version = "1.3.0", features = ["derive"], default-features = false }
+frame-support = { version = '2.0.0-alpha.8', default-features = false }
+frame-system = { version = '2.0.0-alpha.8', default-features = false }
+sp-runtime = { version = '2.0.0-alpha.8', default-features = false }
+balances = { package = 'pallet-balances', version = '2.0.0-alpha.8', default-features = false }
+sp-std = { version = '2.0.0-alpha.8', default-features = false }
+alt_serde = { version = "1", default-features = false, features = ["derive"] }
+# updated to `alt_serde_json` when latest version supporting feature `alloc` is released
+serde_json = { version = "1", default-features = false, git = "https://github.com/Xanewok/json", branch = "no-std", features = ["alloc"] }
+sp-core = { version = '2.0.0-alpha.8', default-features = false }
+sp-io = { version = '2.0.0-alpha.8', default-features = false }
+#geojson = { version = "0.18.0", default-features = false }
+
+
+
+[dev-dependencies]
+sp-core = { version = '2.0.0-alpha.8', default-features = false }
+sp-io = { version = '2.0.0-alpha.8', default-features = false }
