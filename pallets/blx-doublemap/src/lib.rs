@@ -57,7 +57,7 @@ pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"demo");
 pub const NUM_VEC_LEN: usize = 10;
 
 // We are fetching information from github public API about organisation `substrate-developer-hub`.
-pub const HTTP_REMOTE_REQUEST_BYTES: &[u8] = b"https://spencerbh.github.io/sandbox/18102019.geojson";
+pub const HTTP_REMOTE_REQUEST_BYTES: &[u8] = b"https://spencerbh.github.io/sandbox/18102019manualstrip.json";
 pub const HTTP_HEADER_USER_AGENT: &[u8] = b"spencerbh";
 
 /// Based on the above `KeyTypeId` we need to generate a pallet-specific crypto type wrappers.
@@ -94,15 +94,24 @@ pub mod crypto {
 
 // Specifying serde path as `alt_serde`
 // ref: https://serde.rs/container-attrs.html#crate
+//#[serde(crate = "alt_serde")]
+//#[derive(Deserialize, Encode, Decode, Default)]
+//struct GithubInfo {
+	// Specify our own deserializing function to convert JSON string to vector of bytes
+//	#[serde(deserialize_with = "de_string_to_bytes")]
+//	login: Vec<u8>,
+//	#[serde(deserialize_with = "de_string_to_bytes")]
+//	blog: Vec<u8>,
+//	public_repos: u32,
+//}
+
 #[serde(crate = "alt_serde")]
 #[derive(Deserialize, Encode, Decode, Default)]
-struct GithubInfo {
-	// Specify our own deserializing function to convert JSON string to vector of bytes
+struct ApnTokenInfo {
+	apn: u32,
 	#[serde(deserialize_with = "de_string_to_bytes")]
-	login: Vec<u8>,
-	#[serde(deserialize_with = "de_string_to_bytes")]
-	blog: Vec<u8>,
-	public_repos: u32,
+	agencyname: Vec<u8>,
+	shape_area: u32,
 }
 
 pub fn de_string_to_bytes<'de, D>(de: D) -> Result<Vec<u8>, D::Error>
@@ -113,16 +122,30 @@ where
 	Ok(s.as_bytes().to_vec())
 }
 
-impl fmt::Debug for GithubInfo {
+//impl fmt::Debug for GithubInfo {
+	// `fmt` converts the vector of bytes inside the struct back to string for
+	//   more friendly display.
+//	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//		write!(
+//			f,
+//			"{{ login: {}, blog: {}, public_repos: {} }}",
+//			str::from_utf8(&self.login).map_err(|_| fmt::Error)?,
+//			str::from_utf8(&self.blog).map_err(|_| fmt::Error)?,
+//			&self.public_repos
+//		)
+//	}
+//}
+
+impl fmt::Debug for ApnTokenInfo {
 	// `fmt` converts the vector of bytes inside the struct back to string for
 	//   more friendly display.
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		write!(
 			f,
-			"{{ login: {}, blog: {}, public_repos: {} }}",
-			str::from_utf8(&self.login).map_err(|_| fmt::Error)?,
-			str::from_utf8(&self.blog).map_err(|_| fmt::Error)?,
-			&self.public_repos
+			"{{ apn: {}, agencyname: {}, shape_area: {} }}",
+			&self.apn,
+			str::from_utf8(&self.agencyname).map_err(|_| fmt::Error)?,
+			&self.shape_area,
 		)
 	}
 }
@@ -435,8 +458,8 @@ impl<T: Trait> Module<T> {
 		// Start off by creating a reference to Local Storage value.
 		// Since the local storage is common for all offchain workers, it's a good practice
 		// to prepend our entry with the pallet name.
-		let s_info = StorageValueRef::persistent(b"offchain-demo::gh-info");
-		let s_lock = StorageValueRef::persistent(b"offchain-demo::lock");
+		let s_info = StorageValueRef::persistent(b"blx-doublemap::apn-info");
+		let s_lock = StorageValueRef::persistent(b"blx-doublemap::lock");
 
 		// The local storage is persisted and shared between runs of the offchain workers,
 		// and offchain workers may run concurrently. We can use the `mutate` function, to
@@ -447,9 +470,15 @@ impl<T: Trait> Module<T> {
 		// the storage in one go.
 		//
 		// Ref: https://substrate.dev/rustdocs/v2.0.0-alpha.7/sp_runtime/offchain/storage/struct.StorageValueRef.html
-		if let Some(Some(gh_info)) = s_info.get::<GithubInfo>() {
+//		if let Some(Some(gh_info)) = s_info.get::<GithubInfo>() {
 			// gh-info has already been fetched. Return early.
-			debug::info!("cached gh-info: {:?}", gh_info);
+//			debug::info!("cached gh-info: {:?}", gh_info);
+//			return Ok(());
+//		}
+
+		if let Some(Some(apn_info)) = s_info.get::<ApnTokenInfo>() {
+			// apn-info has already been fetched. Return early.
+			debug::info!("cached apn-info: {:?}", apn_info);
 			return Ok(());
 		}
 
@@ -478,12 +507,12 @@ impl<T: Trait> Module<T> {
 		//   `Ok(Ok(true))` - successfully acquire the lock, so we run `fetch_n_parse`
 		if let Ok(Ok(true)) = res {
 			match Self::fetch_n_parse() {
-				Ok(gh_info) => {
+				Ok(apn_info) => {
 					// set gh-info into the storage and release the lock
-					s_info.set(&gh_info);
+					s_info.set(&apn_info);
 					s_lock.set(&false);
 
-					debug::info!("fetched gh-info: {:?}", gh_info);
+					debug::info!("fetched apn-info: {:?}", apn_info);
 				}
 				Err(err) => {
 					// release the lock
@@ -496,7 +525,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	/// Fetch from remote and deserialize the JSON to a struct
-	fn fetch_n_parse() -> Result<GithubInfo, Error<T>> {
+	fn fetch_n_parse() -> Result<ApnTokenInfo, Error<T>> {
 		let resp_bytes = Self::fetch_from_remote().map_err(|e| {
 			debug::error!("fetch_from_remote error: {:?}", e);
 			<Error<T>>::HttpFetchingError
@@ -507,9 +536,9 @@ impl<T: Trait> Module<T> {
 		debug::info!("{}", resp_str);
 
 		// Deserializing JSON to struct, thanks to `serde` and `serde_derive`
-		let gh_info: GithubInfo =
+		let apn_info: ApnTokenInfo =
 			serde_json::from_str(&resp_str).map_err(|_| <Error<T>>::HttpFetchingError)?;
-		Ok(gh_info)
+		Ok(apn_info)
 	}
 
 	/// This function uses the `offchain::http` API to query the remote github information,

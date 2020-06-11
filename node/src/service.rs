@@ -91,6 +91,11 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 	let name = config.network.node_name.clone();
 	let disable_grandpa = config.disable_grandpa;
 
+	// This variable is only used when ocw feature is enabled.
+	// Suppress the warning when ocw feature is not enabled.
+	#[allow(unused_variables)]
+	let dev_seed = config.dev_key_seed.clone();
+
 	let (builder, mut import_setup, inherent_data_providers) = new_full_start!(config);
 
 	let (block_import, grandpa_link) =
@@ -104,6 +109,21 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, provider)) as _)
 		})?
 		.build()?;
+
+	// Initialize seed for signing transaction using off-chain workers
+	#[cfg(feature = "ocw")]
+	{
+		if let Some(seed) = dev_seed {
+			service
+				.keystore()
+				.write()
+				.insert_ephemeral_from_seed_by_type::<node_template_runtime::blx_doublemap::crypto::Pair>(
+					&seed,
+					node_template_runtime::blx_doublemap::KEY_TYPE,
+				)
+				.expect("Dev Seed should always succeed.");
+		}
+	}
 
 	if role.is_authority() {
 		let proposer =
