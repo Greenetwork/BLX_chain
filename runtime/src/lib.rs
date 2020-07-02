@@ -15,7 +15,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionValidity, TransactionSource},
 };
 use sp_runtime::traits::{
-	BlakeTwo256, Block as BlockT, IdentityLookup, Verify, ConvertInto, IdentifyAccount, NumberFor,
+	BlakeTwo256, Block as BlockT, IdentityLookup, Verify, IdentifyAccount, NumberFor, Saturating,
 	SaturatedConversion,
 };
 use sp_api::impl_runtime_apis;
@@ -25,8 +25,6 @@ use grandpa::fg_primitives;
 use sp_version::RuntimeVersion;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
-
-//use sp_std::prelude::*;
 
 // A few exports that help ease life for downstream crates.
 #[cfg(any(feature = "std", test))]
@@ -38,7 +36,7 @@ pub use frame_support::{
 	construct_runtime, parameter_types, StorageValue, debug,
 	traits::{KeyOwnerProofSystem, Randomness},
 	weights::{
-		Weight,
+		Weight, IdentityFee,
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
 	},
 };
@@ -71,8 +69,6 @@ pub type Hash = sp_core::H256;
 
 /// Digest item type.
 pub type DigestItem = generic::DigestItem<Hash>;
-
-pub use blx_doublemap;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -132,6 +128,9 @@ parameter_types! {
 	/// We allow for 2 seconds of compute with a 6 second average block time.
 	pub const MaximumBlockWeight: Weight = 2 * WEIGHT_PER_SECOND;
 	pub const AvailableBlockRatio: Perbill = Perbill::from_percent(75);
+	/// Assume 10% of weight for average on_initialize calls.
+	pub MaximumExtrinsicWeight: Weight = AvailableBlockRatio::get()
+		.saturating_sub(Perbill::from_percent(10)) * MaximumBlockWeight::get();
 	pub const MaximumBlockLength: u32 = 5 * 1024 * 1024;
 	pub const Version: RuntimeVersion = VERSION;
 }
@@ -169,6 +168,10 @@ impl system::Trait for Runtime {
 	/// The base weight of any extrinsic processed by the runtime, independent of the
 	/// logic of that extrinsic. (Signature verification, nonce increment, fee, etc...)
 	type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
+	/// The maximum weight that a single extrinsic of `Normal` dispatch class can have,
+	/// idependent of the logic of that extrinsics. (Roughly max block weight - average on
+	/// initialize cost).
+	type MaximumExtrinsicWeight = MaximumExtrinsicWeight;
 	/// Maximum size of all encoded transactions (in bytes) that are allowed in one block.
 	type MaximumBlockLength = MaximumBlockLength;
 	/// Portion of the block weight that is available to all normal transactions.
@@ -241,7 +244,7 @@ impl transaction_payment::Trait for Runtime {
 	type Currency = balances::Module<Runtime>;
 	type OnTransactionPayment = ();
 	type TransactionByteFee = TransactionByteFee;
-	type WeightToFee = ConvertInto;
+	type WeightToFee = IdentityFee<Balance>;
 	type FeeMultiplierUpdate = ();
 }
 
@@ -255,25 +258,6 @@ impl template::Trait for Runtime {
 	type Event = Event;
 }
 
-/// The hello-substrate pallet from the Substrate Recipes
-impl hello_substrate::Trait for Runtime {}
-
-impl struct_storage::Trait for Runtime {
-	type Event = Event;
-}
-
-impl blx_storage::Trait for Runtime {
-	type Event = Event;
-}
-
-impl double_map::Trait for Runtime {
-	type Event = Event;
-}
-
-//impl blx_doublemap::Trait for Runtime {
-//	type Event = Event;
-//}
-
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -282,8 +266,8 @@ parameter_types! {
 	pub const UnsignedPriority: u64 = 100;
 }
 
-impl blx_doublemap::Trait for Runtime {
-	type AuthorityId = blx_doublemap::crypto::TestAuthId;
+impl claimer::Trait for Runtime {
+	type AuthorityId = claimer::crypto::TestAuthId;
 	type Call = Call;
 	type Event = Event;
 	type UnsignedPriority = UnsignedPriority;
@@ -346,6 +330,7 @@ where
 }
 
 
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -362,11 +347,7 @@ construct_runtime!(
 		Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		// Used for the module template in `./template.rs`
 		TemplateModule: template::{Module, Call, Storage, Event<T>},
-		HelloSubstrate: hello_substrate::{Module, Call},
-		StructStorage: struct_storage::{Module, Call, Storage, Event<T>},
-		BlxStorage: blx_storage::{Module, Call, Storage, Event<T>},
-		DoubleMap: double_map::{Module, Call, Storage, Event<T>},
-		BlxDoubleMap: blx_doublemap::{Module, Call, Storage, Event<T>},
+		Claimer: claimer::{Module, Call, Storage, Event<T>},
 	}
 );
 
@@ -478,12 +459,6 @@ impl_runtime_apis! {
 		) -> Option<Vec<(Vec<u8>, KeyTypeId)>> {
 			opaque::SessionKeys::decode_into_raw_public_keys(&encoded)
 		}
-
-//		fn decode_session_keys_b(
-//			_encoded: Vec<u8>,
-//		) -> Option<Vec<(Vec<u8>, sp_core::crypto::KeyTypeId)>> {
-//			None
-//		}
 	}
 
 	impl fg_primitives::GrandpaApi<Block> for Runtime {

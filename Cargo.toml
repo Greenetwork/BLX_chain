@@ -1,13 +1,10 @@
+[profile.release]
+panic = 'unwind'
+
 [workspace]
 members = [
     'node',
     'pallets/template',
     'runtime',
-    'pallets/hello-substrate',
-    'pallets/struct-storage',
-    'pallets/blx-storage',
-    'pallets/double-map',
-    'pallets/blx-doublemap',
+    'pallets/claimer'
 ]
-[profile.release]
-panic = 'unwind'

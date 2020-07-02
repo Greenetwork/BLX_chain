@@ -1,46 +1,12 @@
-[dependencies.hello-substrate]
-default-features = false
-package = 'hello-substrate'
-path = '../pallets/hello-substrate'
-version = '2.0.0-alpha.8'
-
-[dependencies.struct-storage]
-default-features = false
-package = 'struct-storage'
-path = '../pallets/struct-storage'
-version = '2.0.0-alpha.8'
-
-[dependencies.blx-storage]
-default-features = false
-package = 'blx-storage'
-path = '../pallets/blx-storage'
-version = '2.0.0-alpha.8'
-
-[dependencies.double-map]
-default-features = false
-package = 'double-map'
-path = '../pallets/double-map'
-version = '2.0.0-alpha.8'
-
-[dependencies.blx-doublemap]
-default-features = false
-package = 'blx-doublemap'
-path = '../pallets/blx-doublemap'
-version = '2.0.0-alpha.8'
-
 [dependencies.aura]
 default-features = false
-
 package = 'pallet-aura'
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.balances]
 default-features = false
-
 package = 'pallet-balances'
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.codec]
 default-features = false
@@ -50,29 +16,21 @@ version = '1.3.0'
 
 [dependencies.frame-executive]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.frame-support]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.grandpa]
 default-features = false
-
 package = 'pallet-grandpa'
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.randomness-collective-flip]
 default-features = false
-
 package = 'pallet-randomness-collective-flip'
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.serde]
 features = ['derive']
@@ -81,115 +39,87 @@ version = '1.0.101'
 
 [dependencies.sp-api]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.sp-block-builder]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.sp-consensus-aura]
 default-features = false
-
-
-version = '0.8.0-alpha.8'
+version = '0.8.0-rc3'
 
 [dependencies.sp-core]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.sp-inherents]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.sp-io]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.sp-offchain]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.sp-runtime]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.sp-session]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.sp-std]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.sp-transaction-pool]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.sp-version]
 default-features = false
-
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.sudo]
 default-features = false
-
 package = 'pallet-sudo'
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.system]
 default-features = false
-
 package = 'frame-system'
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.template]
 default-features = false
 package = 'pallet-template'
 path = '../pallets/template'
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.timestamp]
 default-features = false
-
 package = 'pallet-timestamp'
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [dependencies.transaction-payment]
 default-features = false
-
 package = 'pallet-transaction-payment'
-
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [build-dependencies.wasm-builder-runner]
-
 package = 'substrate-wasm-builder-runner'
-
 version = '1.0.5'
+
+[dependencies.claimer]
+default-features = false
+package = 'claimer'
+path = '../pallets/claimer'
+version = '2.0.0-rc3'
 
 [package]
 authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
@@ -198,7 +128,7 @@ homepage = 'https://substrate.io'
 license = 'Unlicense'
 name = 'node-template-runtime'
 repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
-version = '2.0.0-alpha.8'
+version = '2.0.0-rc3'
 
 [package.metadata.docs.rs]
 targets = ['x86_64-unknown-linux-gnu']
@@ -206,7 +136,6 @@ targets = ['x86_64-unknown-linux-gnu']
 [features]
 default = ['std']
 std = [
-    'hello-substrate/std',
     'aura/std',
     'balances/std',
     'codec/std',
@@ -232,8 +161,5 @@ std = [
     'timestamp/std',
     'transaction-payment/std',
     'template/std',
-    'struct-storage/std',
-    'double-map/std',
-    'blx-storage/std',
-    'blx-doublemap/std',
+    'claimer/std',
 ]

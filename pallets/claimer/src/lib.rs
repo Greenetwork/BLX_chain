@@ -1,50 +1,47 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::string_lit_as_bytes)]
-//! BLX double map
-//! This pallet demonstrates how to declare and store `strcuts` that contain types
-//! that come from the pallet's configuration trait.
+//! BLX claimer
+//! This pallet a stakeholder claiming an ApnToken via parcel number
+//! It is a WIP
 
 use frame_support::{
-	codec::{Decode, Encode},
-	decl_event, decl_module, decl_storage, debug, decl_error,
-	dispatch::DispatchResult,
-	ensure,
-	storage::{StorageDoubleMap, StorageMap, StorageValue},
-	traits::Get,
+	codec::{Decode, Encode}, // used to on-chain storage
+	decl_event, decl_module, decl_storage, debug, decl_error, // used for all of the different macros
+	dispatch::DispatchResult, // the return from a dispatchable call which is a funciton that a use can call as part of an extrinsic
+	ensure, // used to verify things
+	storage::{StorageDoubleMap, StorageMap, StorageValue}, // storage types used
+	traits::Get, // no idea
 };
 use frame_system::{
-	self as system, ensure_signed, ensure_none,
-	offchain::{
+	self as system, ensure_signed, ensure_none, 
+	offchain::{ // offchain worker imports
 		AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer, SubmitTransaction,
 	},
 };
-use sp_runtime::RuntimeDebug;
-use sp_std::prelude::*;
-//use sp_runtime::traits::IsMember;
+use sp_runtime::RuntimeDebug; 
+use sp_std::prelude::*; // imports a bunch of boiler plate
 
-use sp_std::str;
-use core::{convert::TryInto, fmt};
-use sp_core::crypto::KeyTypeId;
+use sp_std::str; // string
+use core::{convert::TryInto, fmt}; // converts the vector of bytes inside the struct back to string for more friendly display.
+use sp_core::crypto::KeyTypeId; // for using keys for signed extrinsics
 
-use sp_runtime::{
-	offchain as rt_offchain,
-	offchain::storage::StorageValueRef,
-	transaction_validity::{
+use sp_runtime::{ 
+	offchain as rt_offchain, // offchain worker
+	offchain::storage::StorageValueRef, // offchain worker storage
+	transaction_validity::{ // offchain worker unsigned transaction checks...
 		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity,
 		ValidTransaction,
 	},
 };
 
-
 // We use `alt_serde`, and Xanewok-modified `serde_json` so that we can compile the program
 //   with serde(features `std`) and alt_serde(features `no_std`).
 use alt_serde::{Deserialize, Deserializer};
 
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[cfg(test)]
-mod tests;
+//#[cfg(test)]
+//mod tests;
 
 /// Defines application identifier for crypto keys of this module.
 ///
@@ -54,6 +51,7 @@ mod tests;
 /// `KeyTypeId` from the keystore and use the ones it finds to sign the transaction.
 /// The keys can be inserted manually via RPC (see `author_insertKey`).
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"demo");
+
 pub const NUM_VEC_LEN: usize = 10;
 
 // We are fetching information from github public API about organisation `substrate-developer-hub`.
@@ -92,22 +90,14 @@ pub mod crypto {
 	}
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Specifying serde path as `alt_serde`
 // ref: https://serde.rs/container-attrs.html#crate
-//#[serde(crate = "alt_serde")]
-//#[derive(Deserialize, Encode, Decode, Default)]
-//struct GithubInfo {
-	// Specify our own deserializing function to convert JSON string to vector of bytes
-//	#[serde(deserialize_with = "de_string_to_bytes")]
-//	login: Vec<u8>,
-//	#[serde(deserialize_with = "de_string_to_bytes")]
-//	blog: Vec<u8>,
-//	public_repos: u32,
-//}
-
 #[serde(crate = "alt_serde")]
 #[derive(Deserialize, Encode, Decode, Default)]
 struct ApnTokenInfo {
+	// Specify our own deserializing function to convert JSON string to vector of bytes
 	apn: u32,
 	#[serde(deserialize_with = "de_string_to_bytes")]
 	agencyname: Vec<u8>,
@@ -122,20 +112,7 @@ where
 	Ok(s.as_bytes().to_vec())
 }
 
-//impl fmt::Debug for GithubInfo {
-	// `fmt` converts the vector of bytes inside the struct back to string for
-	//   more friendly display.
-//	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//		write!(
-//			f,
-//			"{{ login: {}, blog: {}, public_repos: {} }}",
-//			str::from_utf8(&self.login).map_err(|_| fmt::Error)?,
-//			str::from_utf8(&self.blog).map_err(|_| fmt::Error)?,
-//			&self.public_repos
-//		)
-//	}
-//}
-
+// Method for the ApnTokenInfo (utility specified for this struct)
 impl fmt::Debug for ApnTokenInfo {
 	// `fmt` converts the vector of bytes inside the struct back to string for
 	//   more friendly display.
@@ -160,8 +137,6 @@ pub trait Trait: balances::Trait + system::Trait + CreateSignedTransaction<Call<
 	type Call: From<Call<Self>>;
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-	/// The type to sign and send transactions.
-	type UnsignedPriority: Get<TransactionPriority>;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,12 +145,9 @@ pub trait Trait: balances::Trait + system::Trait + CreateSignedTransaction<Call<
 #[derive(Debug)]
 enum TransactionType {
 	SignedSubmitNumber,
-	UnsignedSubmitNumber,
 	HttpFetching,
 	None,
 }
-
-pub type GroupIndex = u32; // this is Encode (which is necessary for double_map)
 
 #[derive(Encode, Decode, Default, RuntimeDebug)]
 pub struct BasinOwnerId<AccountId> {
@@ -185,52 +157,29 @@ pub struct BasinOwnerId<AccountId> {
 
 #[derive(Encode, Decode, Default, RuntimeDebug)]
 pub struct ApnToken<
-	//Hash, 
 	Balance> {
 	super_apn: u32,
 	area: u32,
 	balance: Balance,
-	//annual_allocation: AnnualAllocation<Hash>, // needs to be converted to vector of structs or similar, review substrate kitties for more
+	agency: Vec<u8>,
 }
 
 type ApnTokenOf<T> = ApnToken<
-	//<T as system::Trait>::Hash, 
 	<T as balances::Trait>::Balance>;
-
-
-#[derive(Encode, Decode, Clone, Default, RuntimeDebug)]
-pub struct AnnualAllocation<Hash> {
-	apn: u32,
-	year: u32,
-	hash: Hash, // this will be txn hash from Allocation Round
-	current_years_allocation: u32,
-}
-
-type AnnualAllocationOf<T> = AnnualAllocation<<T as system::Trait>::Hash,
- //<T as balances::Trait>::Balance
- >;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Dmap {
 		
-		/// A vector of recently submitted numbers. Should be bounded
-		Numbers get(fn numbers): Vec<u64>;
-
-		// Annual Allocation (double map to Apn Tokens and AccountId), works
-		AnnualAllocationsByApnTokenorAccount get(fn annual_allocations_by_apn_tokens_or_account):
-			double_map hasher(blake2_128_concat) u32, hasher(blake2_128_concat) T::AccountId => AnnualAllocationOf<T>;
-		
 		// Get Apn Tokens for AccountId, currently returning empty struct
 		ApnTokensByAccount get(fn apn_tokens_by_account):
 			map hasher(blake2_128_concat) T::AccountId => ApnTokenOf<T>;
 
 		// Get Apn Tokens for Super Number, works
+		// (u32,u32) is basin_id and super_apn
 		ApnTokensBySuperApns get(fn super_things_by_super_apns):
-			map hasher(blake2_128_concat) (u32,u32) => ApnToken<
-				//T::Hash, 
-				T::Balance>;
+			map hasher(blake2_128_concat) (u32,u32) => ApnToken<T::Balance>;
 
 		NextBasinId get (fn next_basin_id): u32;
 
@@ -250,7 +199,6 @@ decl_storage! {
 decl_event! (
 	pub enum Event<T>
 	where
-		<T as system::Trait>::Hash,
 		<T as balances::Trait>::Balance,
 		AccountId = <T as system::Trait>::AccountId,
 	{
@@ -259,11 +207,7 @@ decl_event! (
 		/// New member for `AllMembers` group
 		NewMember(AccountId),
 		// fields of the new allocation
-		//NewAnnualAllocation(u32, Hash, Balance),
-		// fields of the apn_token and the annual_allocation fields
-		//NewApnTokenByExistingAnnualAllocation(u32, u32, Hash, Balance),
-		// ""
-		NewApnTokenByNewAnnualAllocation(u32, u32, Hash, Balance),
+		NewApnTokenByNewAnnualAllocation(u32, u32, Balance),
 	}
 );
 
@@ -273,8 +217,6 @@ decl_error! {
 	pub enum Error for Module<T: Trait> {
 		// Error returned when making signed transactions in off-chain worker
 		SignedSubmitNumberError,
-		// Error returned when making unsigned transactions in off-chain worker
-		UnsignedSubmitNumberError,
 		// Error returned when making remote http fetching
 		HttpFetchingError,
 		// Error returned when gh-info has already been fetched
@@ -289,30 +231,23 @@ decl_module! {
 		fn deposit_event() = default;
 
 		#[weight = 0]
-		pub fn submit_number_signed(origin, number: u64) -> DispatchResult {
-			debug::info!("submit_number_signed: {:?}", number);
+		pub fn submit_info_signed(origin, apn_first: u64) -> DispatchResult {
+			debug::info!("submit_info_signed: {:?}", apn_first);
 			let who = ensure_signed(origin)?;
-			Self::append_or_replace_number(Some(who), number)
+			Self::create_apntoken_fromocw(Some(who), apn_first)
 		}
 
-		#[weight = 0]
-		pub fn submit_number_unsigned(origin, _block: T::BlockNumber, number: u64) -> DispatchResult {
-			debug::info!("submit_number_unsigned: {:?}", number);
-			let _ = ensure_none(origin)?;
-			Self::append_or_replace_number(None, number)
-		}
+		fn offchain_worker(choice: u32) { // ingesting some integer which is going to choose tx type we want
+			debug::info!("Entering off-chain workers"); // printing to log
 
-		fn offchain_worker(block_number: T::BlockNumber) {
-			debug::info!("Entering off-chain workers");
-
-			let result = match Self::choose_tx_type(block_number) {
-				TransactionType::SignedSubmitNumber => Self::signed_submit_number(block_number),
-				TransactionType::UnsignedSubmitNumber => Self::unsigned_submit_number(block_number),
-				TransactionType::HttpFetching => Self::fetch_if_needed(),
-				TransactionType::None => Ok(())
+			let result = match Self::choose_tx_type(choice) { // match the output of the choose_tx_type function to one of the items in the options below
+				// the match results in another function being executed
+				TransactionType::SignedSubmitNumber => Self::signed_submit_number(choice), // this match results in executing a function where things submitted on-chain
+				TransactionType::HttpFetching => Self::fetch_if_needed(), // this match results in executing a function which fetches the info from online
+				TransactionType::None => Ok(()) // this match results in nothing
 			};
 
-			if let Err(e) = result { debug::error!("Error: {:?}", e); }
+			if let Err(e) = result { debug::error!("Error: {:?}", e); } // if we have an error come from one of the executed functions pass it to this and log it
 		}
 	
 
@@ -326,37 +261,6 @@ decl_module! {
 			Self::deposit_event(RawEvent::NewMember(new_member));
 			Ok(())
 		}
-
-//		/// Stores an `AnnualAllocation` struct in the storage map
-//		#[weight = 10_000]
-//		fn insert_annual_allocation(origin, number: u32, hash: T::Hash, balance: T::Balance) -> DispatchResult {
-//			let _ = ensure_signed(origin)?;
-//			let thing = AnnualAllocation {
-//							number,
-//							hash,
-//							balance,
-//						};
-//			<AnnualAllocationsByNumbers<T>>::insert(number, thing);
-//			Self::deposit_event(RawEvent::NewAnnualAllocation(number, hash, balance));
-//			Ok(())
-//		}
-
-//		/// Stores a `SuperThing` struct in the storage map using an `InnerThing` that was already
-//		/// stored
-//		#[weight = 10_000]
-//		fn insert_apn_token_with_existing_annual_allocation(origin, inner_number: u32, super_number: u32) -> DispatchResult {
-//			let _ = ensure_signed(origin)?;
-//			let annual_allocation = Self::annual_allocations_by_numbers(inner_number);
-//			let apn_token = ApnToken {
-//				super_number,
-//				annual_allocation: annual_allocation.clone(),
-//			};
-//			<ApnTokensBySuperNumbers<T>>::insert(super_number, apn_token);
-//			Self::deposit_event(RawEvent::NewApnTokenByExistingAnnualAllocation(
-//				super_number, annual_allocation.number, annual_allocation.hash, annual_allocation.balance));
-//			Ok(())
-//		}
-
 		
 		// Create the digital Basin with given no parameters, lol
 		#[weight = 10_000]
@@ -380,6 +284,33 @@ decl_module! {
 			Ok(())
 		}
 
+// Create an ApnToken with parameters from ocw and link to basin
+		//
+		// @param super_apn apn used as ID
+		// @area area of APN related to ApnToken
+		// @balance AcreFeet of water allocated to that ApnToken
+
+		#[weight = 10_000]
+		fn create_apntoken_fromocw(
+			origin, apn_first
+		) -> DispatchResult {
+			let member = ensure_signed(origin)?;
+		  // ensure message sender is blah
+			//let new_balance_of_apntokens = 25//<BalanceApnTokens<T>>::get((basin_id, member.clone())) + 1; // create a variable which is the BalanceApnTokens + 1
+		//<BalanceApnTokens<T>>::insert((basin_id, member.clone()), new_balance_of_apntokens); // update the amount of ApnTokens a user has by 1 using the line above
+	//		
+			// Create new ApnToken
+			let apn_token = ApnToken {
+				apn_first,
+				area = 44,
+				balance = 3, // this is balance of Acre-feet for the ApnToken
+				agency = String::from("initial contents"),
+			};
+
+			<ApnTokensBySuperApns<T>>::insert((5, super_apn), apn_token); // create an ApnToken, linked to basin_id
+			Ok(())
+		}
+		
 		// Create an ApnToken with given parameters and link to existing basin
 		//
 		// @param super_apn apn used as ID
@@ -393,59 +324,34 @@ decl_module! {
 			super_apn: u32, 
 			area: u32, 
 			balance: T::Balance,
+			agency: Vec<u8>,
 		) -> DispatchResult {
-			let member = ensure_signed(origin)?;
-
-			let new_balance_of_apntokens = <BalanceApnTokens<T>>::get((basin_id, member.clone())) + 1;
-			<BalanceApnTokens<T>>::insert((basin_id, member.clone()), new_balance_of_apntokens);
-			
+			let member = ensure_signed(origin)?; // ensure message sender is blah
+			let new_balance_of_apntokens = <BalanceApnTokens<T>>::get((basin_id, member.clone())) + 1; // create a variable which is the BalanceApnTokens + 1
+		<BalanceApnTokens<T>>::insert((basin_id, member.clone()), new_balance_of_apntokens); // update the amount of ApnTokens a user has by 1 using the line above
+	//		
 			// Create new ApnToken
 			let apn_token = ApnToken {
 				super_apn,
 				area,
 				balance, // this is balance of Acre-feet for the ApnToken
+				agency,
 			};
 
-			<ApnTokensBySuperApns<T>>::insert((basin_id, super_apn), apn_token);
+			<ApnTokensBySuperApns<T>>::insert((basin_id, super_apn), apn_token); // create an ApnToken, linked to basin_id
 			Ok(())
 		}
 	}
 }
 
 impl<T: Trait> Module<T> {
-	/// Add a new number to the list.
-	fn append_or_replace_number(who: Option<T::AccountId>, number: u64) -> DispatchResult {
-		Numbers::mutate(|numbers| {
-			// The append or replace logic. The `numbers` vector is at most `NUM_VEC_LEN` long.
-			let num_len = numbers.len();
 
-			if num_len < NUM_VEC_LEN {
-				numbers.push(number);
-			} else {
-				numbers[num_len % NUM_VEC_LEN] = number;
-			}
-
-			// displaying the average
-			let average = match num_len {
-				0 => 0,
-				_ => numbers.iter().sum::<u64>() / (num_len as u64),
-			};
-
-			debug::info!("Current average of numbers is: {}", average);
-		});
-
-		// Raise the NewNumber event
-		Self::deposit_event(RawEvent::NewNumber(who, number));
-		Ok(())
-	}
-
-	fn choose_tx_type(block_number: T::BlockNumber) -> TransactionType {
+	pub fn choose_tx_type(choice: u32) -> TransactionType {
 		// Decide what type of transaction to send based on block number.
 		// Each block the offchain worker will send one type of transaction back to the chain.
 		// First a signed transaction, then an unsigned transaction, then an http fetch and json parsing.
-		match block_number.try_into().ok().unwrap() % 3 {
+		match choice {
 			0 => TransactionType::SignedSubmitNumber,
-			1 => TransactionType::UnsignedSubmitNumber,
 			2 => TransactionType::HttpFetching,
 			_ => TransactionType::None,
 		}
@@ -458,8 +364,8 @@ impl<T: Trait> Module<T> {
 		// Start off by creating a reference to Local Storage value.
 		// Since the local storage is common for all offchain workers, it's a good practice
 		// to prepend our entry with the pallet name.
-		let s_info = StorageValueRef::persistent(b"blx-doublemap::apn-info");
-		let s_lock = StorageValueRef::persistent(b"blx-doublemap::lock");
+		let s_info = StorageValueRef::persistent(b"claimer::apn-info");
+		let s_lock = StorageValueRef::persistent(b"claimer::lock");
 
 		// The local storage is persisted and shared between runs of the offchain workers,
 		// and offchain workers may run concurrently. We can use the `mutate` function, to
@@ -470,12 +376,6 @@ impl<T: Trait> Module<T> {
 		// the storage in one go.
 		//
 		// Ref: https://substrate.dev/rustdocs/v2.0.0-alpha.7/sp_runtime/offchain/storage/struct.StorageValueRef.html
-//		if let Some(Some(gh_info)) = s_info.get::<GithubInfo>() {
-			// gh-info has already been fetched. Return early.
-//			debug::info!("cached gh-info: {:?}", gh_info);
-//			return Ok(());
-//		}
-
 		if let Some(Some(apn_info)) = s_info.get::<ApnTokenInfo>() {
 			// apn-info has already been fetched. Return early.
 			debug::info!("cached apn-info: {:?}", apn_info);
@@ -508,7 +408,7 @@ impl<T: Trait> Module<T> {
 		if let Ok(Ok(true)) = res {
 			match Self::fetch_n_parse() {
 				Ok(apn_info) => {
-					// set gh-info into the storage and release the lock
+					// set apn-info into the storage and release the lock
 					s_info.set(&apn_info);
 					s_lock.set(&false);
 
@@ -586,7 +486,7 @@ impl<T: Trait> Module<T> {
 		Ok(response.body().collect::<Vec<u8>>())
 	}
 
-	fn signed_submit_number(block_number: T::BlockNumber) -> Result<(), Error<T>> {
+	fn signed_submit_number() -> Result<(), Error<T>> {
 		let signer = Signer::<T, T::AuthorityId>::all_accounts();
 		if !signer.can_sign() {
 			debug::error!("No local account available");
@@ -597,10 +497,14 @@ impl<T: Trait> Module<T> {
 		// representing the call, we've just created.
 		// Submit signed will return a vector of results for all accounts that were found in the
 		// local keystore with expected `KEY_TYPE`.
-		let submission: u64 = block_number.try_into().ok().unwrap() as u64;
+		//let submission: u64 = choice as u64;
+		let apn_info_fetched = Self::fetch_n_parse().map_err(|_| "Failed to fetch info");
+		let apn_first: u64 = apn_info_fetched.apn;
+
+
 		let results = signer.send_signed_transaction(|_acct| {
 			// We are just submitting the current block number back on-chain
-			Call::submit_number_signed(submission)
+			Call::submit_info_signed(apn_first)
 		});
 
 		for (acc, res) in &results {
@@ -609,7 +513,7 @@ impl<T: Trait> Module<T> {
 					debug::native::info!(
 						"off-chain send_signed: acc: {:?}| number: {}",
 						acc.id,
-						submission
+						apn_info_fetched,
 					);
 				}
 				Err(e) => {
@@ -619,45 +523,5 @@ impl<T: Trait> Module<T> {
 			};
 		}
 		Ok(())
-	}
-
-	fn unsigned_submit_number(block_number: T::BlockNumber) -> Result<(), Error<T>> {
-		let submission: u64 = block_number.try_into().ok().unwrap() as u64;
-		// Submitting the current block number back on-chain.
-		// `blocknumber` and `submission` params are always the same value but in different
-		//   data type. They seem redundant, but in reality they have different purposes.
-		//   `submission` is the number to be recorded back on-chain. `block_number` is checked in
-		//   `validate_unsigned` function so only one `Call::submit_number_unsigned` is accepted in
-		//   each block generation phase.
-		let call = Call::submit_number_unsigned(block_number, submission);
-
-		SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into()).map_err(|e| {
-			debug::error!("Failed in unsigned_submit_number: {:?}", e);
-			<Error<T>>::UnsignedSubmitNumberError
-		})
-	}
-}
-
-impl<T: Trait> frame_support::unsigned::ValidateUnsigned for Module<T> {
-	type Call = Call<T>;
-
-	fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-		if let Call::submit_number_unsigned(block_num, number) = call {
-			debug::native::info!(
-				"off-chain send_unsigned: block_num: {}| number: {}",
-				block_num,
-				number
-			);
-
-			ValidTransaction::with_tag_prefix("offchain-demo")
-				.priority(T::UnsignedPriority::get())
-				.and_requires([number])
-				.and_provides(block_num)
-				.longevity(3)
-				.propagate(false)
-				.build()
-		} else {
-			InvalidTransaction::Call.into()
-		}
 	}
 }

@@ -34,14 +34,22 @@ macro_rules! new_full_start {
 		let inherent_data_providers = sp_inherents::InherentDataProviders::new();
 
 		let builder = sc_service::ServiceBuilder::new_full::<
-			node_template_runtime::opaque::Block, node_template_runtime::RuntimeApi, crate::service::Executor
+			node_template_runtime::opaque::Block,
+			node_template_runtime::RuntimeApi,
+			crate::service::Executor
 		>($config)?
 			.with_select_chain(|_config, backend| {
 				Ok(sc_consensus::LongestChain::new(backend.clone()))
 			})?
-			.with_transaction_pool(|config, client, _fetcher, prometheus_registry| {
-				let pool_api = sc_transaction_pool::FullChainApi::new(client.clone());
-				Ok(sc_transaction_pool::BasicPool::new(config, std::sync::Arc::new(pool_api), prometheus_registry))
+			.with_transaction_pool(|builder| {
+				let pool_api = sc_transaction_pool::FullChainApi::new(
+					builder.client().clone(),
+				);
+				Ok(sc_transaction_pool::BasicPool::new(
+					builder.config().transaction_pool.clone(),
+					std::sync::Arc::new(pool_api),
+					builder.prometheus_registry(),
+				))
 			})?
 			.with_import_queue(|
 				_config,
@@ -94,21 +102,7 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 	// This variable is only used when ocw feature is enabled.
 	// Suppress the warning when ocw feature is not enabled.
 	#[allow(unused_variables)]
-	let dev_seed = config.dev_key_seed.clone();
-
-	let (builder, mut import_setup, inherent_data_providers) = new_full_start!(config);
-
-	let (block_import, grandpa_link) =
-		import_setup.take()
-			.expect("Link Half and Block Import are present for Full Services or setup failed before. qed");
-
-	let service = builder
-		.with_finality_proof_provider(|client, backend| {
-			// GenesisAuthoritySetProvider is implemented for StorageAndProofProvider
-			let provider = client as Arc<dyn StorageAndProofProvider<_, _>>;
-			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, provider)) as _)
-		})?
-		.build()?;
+	let dev_seed = config.dev_key_seed.clone();	
 
 	// Initialize seed for signing transaction using off-chain workers
 	#[cfg(feature = "ocw")]
@@ -125,9 +119,26 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 		}
 	}
 
+	let (builder, mut import_setup, inherent_data_providers) = new_full_start!(config);
+
+	let (block_import, grandpa_link) =
+		import_setup.take()
+			.expect("Link Half and Block Import are present for Full Services or setup failed before. qed");
+
+	let service = builder
+		.with_finality_proof_provider(|client, backend| {
+			// GenesisAuthoritySetProvider is implemented for StorageAndProofProvider
+			let provider = client as Arc<dyn StorageAndProofProvider<_, _>>;
+			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, provider)) as _)
+		})?
+		.build()?;
+
 	if role.is_authority() {
-		let proposer =
-			sc_basic_authorship::ProposerFactory::new(service.client(), service.transaction_pool());
+		let proposer = sc_basic_authorship::ProposerFactory::new(
+			service.client(),
+			service.transaction_pool(),
+			service.prometheus_registry().as_ref(),
+		);
 
 		let client = service.client();
 		let select_chain = service.select_chain()
@@ -216,13 +227,19 @@ pub fn new_light(config: Configuration) -> Result<impl AbstractService, ServiceE
 		.with_select_chain(|_config, backend| {
 			Ok(LongestChain::new(backend.clone()))
 		})?
-		.with_transaction_pool(|config, client, fetcher, prometheus_registry| {
-			let fetcher = fetcher
+		.with_transaction_pool(|builder| {
+			let fetcher = builder.fetcher()
 				.ok_or_else(|| "Trying to start light transaction pool without active fetcher")?;
 
-			let pool_api = sc_transaction_pool::LightChainApi::new(client.clone(), fetcher.clone());
+			let pool_api = sc_transaction_pool::LightChainApi::new(
+				builder.client().clone(),
+				fetcher.clone(),
+			);
 			let pool = sc_transaction_pool::BasicPool::with_revalidation_type(
-				config, Arc::new(pool_api), prometheus_registry, sc_transaction_pool::RevalidationType::Light,
+				builder.config().transaction_pool.clone(),
+				Arc::new(pool_api),
+				builder.prometheus_registry(),
+				sc_transaction_pool::RevalidationType::Light,
 			);
 			Ok(pool)
 		})?
