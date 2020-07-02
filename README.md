@@ -1,4 +1,4 @@
-BLX_chain allocator module ⚖️
+BLX_chain Claimer module ⚖️
 
 A new FRAME-based Substrate node, ~~ready for hacking.~~ thats been hacked to pieces!
 
@@ -27,6 +27,6 @@ Creates some *related* data structures for and manually put information into:
 
 It also, 
 
-* Uses off-chainworker to fetch geojson from Github and dumps to screen
+* Uses off-chainworker to fetch json from Github ~~and dumps to screen~~ broke in last commit
 
 * Most extrinsics (txns) accessible via polkadot apps js UI 
