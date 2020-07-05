@@ -30,3 +30,22 @@ It also,
 * Uses off-chainworker to fetch json from Github ~~and dumps to screen~~ broke in last commit
 
 * Most extrinsics (txns) accessible via polkadot apps js UI 
+
+
+HACKATHON GOALS:
+* Contribution to Decentralization and Web 3.0 Friendliness (25%)
+Includes how useful the blockchain or tooling is in the Kusama, Polkadot, and Web 3.0 ecosystem as a whole.
+
+* Originality, Creativity, and Innovation (25%)
+
+Includes how new and novel the submission is versus existing technologies.
+
+* Technical Difficulty (25%)
+
+Includes the level of skill or knowledge required to build the parachain or tools.
+
+* User Experience (25%)
+
+Includes how intuitive and understandable the submission is for potential users.
+
+ 
