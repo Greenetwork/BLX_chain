@@ -99,26 +99,6 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 	let name = config.network.node_name.clone();
 	let disable_grandpa = config.disable_grandpa;
 
-	// This variable is only used when ocw feature is enabled.
-	// Suppress the warning when ocw feature is not enabled.
-	#[allow(unused_variables)]
-	let dev_seed = config.dev_key_seed.clone();	
-
-	// Initialize seed for signing transaction using off-chain workers
-	#[cfg(feature = "ocw")]
-	{
-		if let Some(seed) = dev_seed {
-			service
-				.keystore()
-				.write()
-				.insert_ephemeral_from_seed_by_type::<node_template_runtime::blx_doublemap::crypto::Pair>(
-					&seed,
-					node_template_runtime::blx_doublemap::KEY_TYPE,
-				)
-				.expect("Dev Seed should always succeed.");
-		}
-	}
-
 	let (builder, mut import_setup, inherent_data_providers) = new_full_start!(config);
 
 	let (block_import, grandpa_link) =
@@ -131,7 +111,7 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 			let provider = client as Arc<dyn StorageAndProofProvider<_, _>>;
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, provider)) as _)
 		})?
-		.build()?;
+		.build_full()?;
 
 	if role.is_authority() {
 		let proposer = sc_basic_authorship::ProposerFactory::new(
@@ -162,13 +142,13 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 
 		// the AURA authoring task is considered essential, i.e. if it
 		// fails we take down the service with it.
-		service.spawn_essential_task("aura", aura);
+		service.spawn_essential_task_handle().spawn_blocking("aura", aura);
 	}
 
 	// if the node isn't actively participating in consensus then it doesn't
 	// need a keystore, regardless of which protocol we use below.
 	let keystore = if role.is_authority() {
-		Some(service.keystore())
+		Some(service.keystore() as sp_core::traits::BareCryptoStorePtr)
 	} else {
 		None
 	};
@@ -204,7 +184,7 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 
 		// the GRANDPA voter task is considered infallible, i.e.
 		// if it fails we take down the service with it.
-		service.spawn_essential_task(
+		service.spawn_essential_task_handle().spawn_blocking(
 			"grandpa-voter",
 			sc_finality_grandpa::run_grandpa_voter(grandpa_config)?
 		);
@@ -284,5 +264,5 @@ pub fn new_light(config: Configuration) -> Result<impl AbstractService, ServiceE
 			let provider = client as Arc<dyn StorageAndProofProvider<_, _>>;
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, provider)) as _)
 		})?
-		.build()
+		.build_light()
 }

@@ -136,6 +136,8 @@ parameter_types! {
 }
 
 impl system::Trait for Runtime {
+	/// The basic call filter to use in dispatchable.
+	type BaseCallFilter = ();
 	/// The identifier used to distinguish between accounts.
 	type AccountId = AccountId;
 	/// The aggregated dispatch type that is available for extrinsics.
@@ -270,7 +272,7 @@ impl claimer::Trait for Runtime {
 	type AuthorityId = claimer::crypto::TestAuthId;
 	type Call = Call;
 	type Event = Event;
-	type UnsignedPriority = UnsignedPriority;
+//	type UnsignedPriority = UnsignedPriority;
 }
 
 impl<LocalCall> system::offchain::CreateSignedTransaction<LocalCall> for Runtime
@@ -328,8 +330,6 @@ where
 	type OverarchingCall = Call;
 	type Extrinsic = UncheckedExtrinsic;
 }
-
-
 
 construct_runtime!(
 	pub enum Runtime where
