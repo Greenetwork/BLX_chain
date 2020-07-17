@@ -1,0 +1,10 @@
+{
+    "Address": "AccountId",
+    "U16F16": "[u8; 4]",
+    "GroupIndex": "u32",
+    "ApnToken": {
+      "super_apn": "u32",
+      "area": "u32",
+      "balance": "Balance"
+    }
+  }
