@@ -16,6 +16,13 @@ std = [
     'sp-std/std'
 ]
 #cargo-features = ["resolver"]
+[package.metadata.substrate]
+categories = [
+	"pallet",
+	"offchain worker",
+	"tutorial",
+	"recipe",
+]
 
 [dependencies]
 parity-scale-codec = { version = "1.3.0", features = ["derive"], default-features = false }

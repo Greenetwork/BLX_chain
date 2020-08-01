@@ -4,47 +4,114 @@
 //! This pallet a stakeholder claiming an ApnToken via parcel number
 //! It is a WIP
 
+use core::{convert::TryInto, fmt};
 use frame_support::{
-	codec::{Decode, Encode}, // used for on-chain storage
+	//codec::{Decode, Encode}, // used for on-chain storage
 	decl_event, decl_module, decl_storage, debug, decl_error, // used for all of the different macros
 	dispatch::DispatchResult, // the returns from a dispatachable call which is a function that a user can call as part of an extrensic
 	ensure, // used to verify things
 	storage::{StorageDoubleMap, StorageMap, StorageValue}, // storage types used
 	traits::Get, // no idea
 };
+
+use parity_scale_codec::{Decode, Encode};
+
 use frame_system::{
-	self as system, ensure_signed, ensure_none};
+	self as system, ensure_signed, ensure_none,
+	offchain::{
+		AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer, SubmitTransaction,
+	},
+};
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*; // imports a bunch of boiler plate
 
 use sp_std::str; // string
 
+use sp_core::crypto::KeyTypeId;
+use sp_runtime::{
+	offchain as rt_offchain,
+	offchain::storage::StorageValueRef,
+	transaction_validity::{
+		InvalidTransaction, TransactionPriority, TransactionSource, TransactionValidity,
+		ValidTransaction,
+	},
+};
+
+// We use `alt_serde`, and Xanewok-modified `serde_json` so that we can compile the program
+//   with serde(features `std`) and alt_serde(features `no_std`).
+use alt_serde::{Deserialize, Deserializer};
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//#[cfg(test)]
-//mod tests;
+/// Defines application identifier for crypto keys of this module.
+///
+/// Every module that deals with signatures needs to declare its unique identifier for
+/// its crypto keys.
+/// When offchain worker is signing transactions it's going to request keys of type
+/// `KeyTypeId` from the keystore and use the ones it finds to sign the transaction.
+/// The keys can be inserted manually via RPC (see `author_insertKey`).
+pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"demo");
+pub const NUM_VEC_LEN: usize = 10;
 
+// We are fetching information from github public API about organisation `substrate-developer-hub`.
+pub const HTTP_REMOTE_REQUEST_BYTES: &[u8] = b"https://github.com/spencerbh/sandbox/blob/master/18102019manualstrip.json";
+pub const HTTP_HEADER_USER_AGENT: &[u8] = b"spencerbh";
+
+/// Based on the above `KeyTypeId` we need to generate a pallet-specific crypto type wrappers.
+/// We can use from supported crypto kinds (`sr25519`, `ed25519` and `ecdsa`) and augment
+/// the types with this pallet-specific identifier.
+pub mod crypto {
+	use crate::KEY_TYPE;
+	use sp_core::sr25519::Signature as Sr25519Signature;
+	use sp_runtime::{
+		app_crypto::{app_crypto, sr25519},
+		traits::Verify,
+		MultiSignature, MultiSigner,
+	};
+
+	app_crypto!(sr25519, KEY_TYPE);
+
+	pub struct TestAuthId;
+	// implemented for ocw-runtime
+	impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for TestAuthId {
+		type RuntimeAppPublic = Public;
+		type GenericSignature = sp_core::sr25519::Signature;
+		type GenericPublic = sp_core::sr25519::Public;
+	}
+
+	// implemented for mock runtime in test
+	impl frame_system::offchain::AppCrypto<<Sr25519Signature as Verify>::Signer, Sr25519Signature>
+		for TestAuthId
+	{
+		type RuntimeAppPublic = Public;
+		type GenericSignature = sp_core::sr25519::Signature;
+		type GenericPublic = sp_core::sr25519::Public;
+	}
+}
 
 /////////////////////////////////////////////////////////////////////////////////// //////////////
  
  
 /// This is the pallet's configuration trait
-pub trait Trait: balances::Trait + system::Trait {
+pub trait Trait: balances::Trait + system::Trait + CreateSignedTransaction<Call<Self>> {
+	/// The identifier type for an offchain worker.
+	type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 	/// The overarching dispatch call type.
 	type Call: From<Call<Self>>;
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////
-
 // Custom data type
 #[derive(Debug)]
 enum TransactionType {
 	SignedSubmitNumber,
-	HttpFetching,
+	UnsignedSubmitNumber,
+	//HttpFetching,
 	None,
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub type GroupIndex = u32; // this is Encode (which is necessary for double_map)
 
@@ -54,13 +121,16 @@ pub struct BasinOwnerId<AccountId> {
 	pub basin_id: u32,
 }
 
-#[derive(Encode, Decode, Default, RuntimeDebug)]
+#[serde(crate = "alt_serde")]
+#[derive(Deserialize, Encode, Decode, Default,Debug)]
 pub struct ApnToken<
 	//Hash, 
-	Balance> {
+	//Balance
+	> {
 	super_apn: u32,
+	agency_name: Vec<u8>,
 	area: u32,
-	balance: Balance,
+	//balance: Balance,
 	//annual_allocation: AnnualAllocation<Hash>, // needs to be converted to vector of structs or similar, review substrate kitties for more
 }
 
@@ -81,26 +151,59 @@ type AnnualAllocationOf<T> = AnnualAllocation<<T as system::Trait>::Hash,
  //<T as balances::Trait>::Balance
  >;
 
+ // TaskQueue, needs an extrinsic used to populate these fields
+#[serde(crate = "alt_serde")]
+#[derive(Deserialize, Encode, Decode, Default,Debug)]
+pub struct TaskQueue {
+	#[serde(deserialize_with = "de_string_to_bytes")]
+	http_remote_reqst: Vec<u8>,
+	#[serde(deserialize_with = "de_string_to_bytes")]
+	http_header_usr: Vec<u8>,
+}
+
+// Specifying serde path as `alt_serde`
+// ref: https://serde.rs/container-attrs.html#crate
+#[serde(crate = "alt_serde")]
+#[derive(Deserialize, Encode, Decode, Default)]
+struct GithubInfo {
+	// Specify our own deserializing function to convert JSON string to vector of bytes
+	apn: u32,
+	#[serde(deserialize_with = "de_string_to_bytes")]
+	agencyname: Vec<u8>,
+	shape_area: u32,
+}
+
+pub fn de_string_to_bytes<'de, D>(de: D) -> Result<Vec<u8>, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	let s: &str = Deserialize::deserialize(de)?;
+	Ok(s.as_bytes().to_vec())
+}
+
+impl fmt::Debug for GithubInfo {
+	// `fmt` converts the vector of bytes inside the struct back to string for
+	//   more friendly display.
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(
+			f,
+			"{{ apn: {}, agencyname: {}, shape_area: {} }}",
+			&self.apn,
+			str::from_utf8(&self.agencyname).map_err(|_| fmt::Error)?,
+			&self.shape_area,
+		)
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 decl_storage! {
 	trait Store for Module<T: Trait> as Dmap {
 		
-		/// A vector of recently submitted numbers. Should be bounded
-		//Numbers get(fn numbers): Vec<u64>;
-
-		// Annual Allocation (double map to Apn Tokens and AccountId), works
-		//AnnualAllocationsByApnTokenorAccount get(fn annual_allocations_by_apn_tokens_or_account):
-		//	double_map hasher(blake2_128_concat) u32, hasher(blake2_128_concat) T::AccountId => AnnualAllocationOf<T>;
-		
-		// Get Apn Tokens for AccountId, currently returning empty struct
-		//ApnTokensByAccount get(fn apn_tokens_by_account):
-		//	map hasher(blake2_128_concat) T::AccountId => ApnTokenOf<T>;
-
-		// NOT WORKING
+		// yes WORKING, remember to update types
 		// Get Apn Tokens from basin_id, super_apn
 		pub ApnTokensBySuperApns get(fn super_things_by_super_apns):
-			map hasher(blake2_128_concat) (u32,u32) => ApnToken<T::Balance>;
+			map hasher(blake2_128_concat) (u32,u32) => ApnToken;//<T::Balance>;
 
 		NextBasinId get (fn next_basin_id): u32;
 
@@ -113,6 +216,15 @@ decl_storage! {
 
 		// For membership, works
 		AllMembers get(fn all_members): Vec<T::AccountId>; 
+
+		/// A map of TasksQueues to numbers
+		TaskQueueByNumber get(fn task_queue_by_number):
+			map hasher(blake2_128_concat) u32 => TaskQueue;
+		// A bool to track if there is a task in the queue to be fetched via HTTP
+		QueueAvailable get(fn queue_available): bool;
+		// Another bool to track if there is some data in the offchain worker ready to be submitted onchain
+		//DataAvailable get (fn data_available): bool;
+		UserAgentOnChain get(fn user_agent_on_chain): Vec<u8>;
 	}
 }
 
@@ -147,7 +259,16 @@ decl_error! {
 		// Error returned when making signed transactions in off-chain worker
 		SignedSubmitNumberError,
 		// Error returned when making remote http fetching
-		HttpFetchingError,
+		HttpFetchingError0,
+		HttpFetchingError1,
+		HttpFetchingError2,
+		HttpFetchingError3,
+		HttpFetchingError4,
+		HttpFetchingError5,
+		HttpFetchingError6,
+		HttpFetchingError7,
+		HttpFetchingError8,
+		HttpFetchingError9,
 		// Error returned when gh-info has already been fetched
 		AlreadyFetched,
 	}
@@ -159,14 +280,22 @@ decl_module! {
 	pub struct Module<T: Trait> for enum Call where origin: T::Origin {
 		fn deposit_event() = default;
 
-		/// Join the `AllMembers` vec before joining a group
-		#[weight = 10_000]
-		fn join_all_members(origin) -> DispatchResult {
-			let new_member = ensure_signed(origin)?;
-			//ensure!(!Self::is_member(&new_member), "already a member, can't join");
-			<AllMembers<T>>::append(&new_member);
+		/// Adds a new task to the TaskQueue
+		#[weight = 0]
+		pub fn insert_new_task(origin, task_number: u32, http_remote_reqst: Vec<u8>, http_header_usr: Vec<u8>) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			let task_queue = TaskQueue {
+				http_remote_reqst,
+				http_header_usr,
+			};
+			<TaskQueueByNumber>::insert(task_number, task_queue);
+			QueueAvailable::put(true);
+			Ok(())
+		}
 
-			Self::deposit_event(RawEvent::NewMember(new_member));
+		#[weight = 0]
+		pub fn empty_tasks(origin) -> DispatchResult {
+			QueueAvailable::put(false);
 			Ok(())
 		}
 
@@ -198,34 +327,249 @@ decl_module! {
 		// @area area of APN related to ApnToken
 		// @balance AcreFeet of water allocated to that ApnToken
 
-		#[weight = 10_000]
-		fn create_apntoken(
-			origin, 
-			basin_id: u32,
-			super_apn: u32, 
-			area: u32, 
-			balance: T::Balance,
-		) -> DispatchResult {
-			let member = ensure_signed(origin)?;
+		#[weight = 0]
+		pub fn submit_apn_signed(origin, basin_id: u32, super_apn: u32, agency_name: Vec<u8>, area: u32) -> DispatchResult {
+			debug::info!("submit_apn_signed: {:?}", super_apn);
+			let who = ensure_signed(origin)?;
+			Self::update_apn(Some(who), basin_id, super_apn, agency_name, area)
+		}
+
+//		#[weight = 10_000]
+//		fn create_apntoken(
+//			origin, 
+//			basin_id: u32,
+//			super_apn: u32, 
+//			area: u32, 
+//			balance: T::Balance,
+//		) -> DispatchResult {
+//			let member = ensure_signed(origin)?;
 			
 			// Keeps track of how many ApnTokens any single member has, it adds 1 to the total of apntokens
-			let new_balance_of_apntokens = <BalanceApnTokens<T>>::get((basin_id, member.clone())) + 1;
+//			let new_balance_of_apntokens = <BalanceApnTokens<T>>::get((basin_id, member.clone())) + 1;
 			// Inserts the number of ApnTokens a particular member has associated with a particular basin
-			<BalanceApnTokens<T>>::insert((basin_id, member.clone()), new_balance_of_apntokens);
+//			<BalanceApnTokens<T>>::insert((basin_id, member.clone()), new_balance_of_apntokens);
 			
 			// Create new ApnToken
-			let apn_token = ApnToken {
-				super_apn,
-				area,
-				balance, // this is balance of Acre-feet for the ApnToken
-			};
+//			let apn_token = ApnToken {
+//				super_apn,
+//				area,
+//				balance, // this is balance of Acre-feet for the ApnToken
+//			};
 
 			// Inserts the ApnToken on-chain, mapping to the basin id and the super_apn
-			<ApnTokensBySuperApns<T>>::insert((basin_id, super_apn), apn_token);
+//			<ApnTokensBySuperApns<T>>::insert((basin_id, super_apn), apn_token);
 			// Emits event
-			Self::deposit_event(RawEvent::NewApnTokenClaimed(basin_id,super_apn));
+//			Self::deposit_event(RawEvent::NewApnTokenClaimed(basin_id,super_apn));
 
-			Ok(())
+//			Ok(())
+//		}
+
+		fn offchain_worker(block_number: T::BlockNumber) {
+			debug::info!("Entering off-chain workers");
+
+			let result = 
+				if Self::queue_available() == true {
+					debug::info!("there is a task in the queue");
+					QueueAvailable::put(false);
+					debug::info!("the task status is {:?}", Self::queue_available());
+					Self::fetch_if_needed()
+				//DataAvailable::put(true);
+				} else {
+					debug::info!("executing signed extrinsic");
+					Self::signed_submit_agent()
+					//if let Err(e) = result { debug::error!("Error: {:?}", e); }
+			};
 		}
+	}
+}
+
+
+impl<T: Trait> Module<T> {
+	fn update_apn(who: Option<T::AccountId>, basin_id: u32, super_apn: u32, agency_name: Vec<u8>, area: u32) -> DispatchResult {
+		debug::info!("some info from offchain woah ---> "); //basin {:?} | apn {:?} | agency_name {:?} | area {:?}", basin_id, super_apn, agency_name, area);
+		// Create new ApnToken
+		let apn_token = ApnToken {
+			super_apn,
+			agency_name,
+			area,
+			//balance: 1337 // this is balance of Acre-feet for the ApnToken, arbitrary number for now
+		};
+
+		// Inserts the ApnToken on-chain, mapping to the basin id and the super_apn
+		//<ApnTokensBySuperApns<T>>::insert((basin_id, super_apn), apn_token); // this is for when we use the balance trait
+		<ApnTokensBySuperApns>::insert((basin_id, super_apn), apn_token);
+		// Emits event
+		Ok(())
+	}
+
+		/// Check if we have fetched github info before. If yes, we use the cached version that is
+	///   stored in off-chain worker storage `storage`. If no, we fetch the remote info and then
+	///   write the info into the storage for future retrieval.
+	fn fetch_if_needed() -> Result<(), Error<T>> {
+		// Start off by creating a reference to Local Storage value.
+		// Since the local storage is common for all offchain workers, it's a good practice
+		// to prepend our entry with the pallet name.
+		let s_info = StorageValueRef::persistent(b"offchain-demo::gh-info");
+		let s_lock = StorageValueRef::persistent(b"offchain-demo::lock");
+
+		// The local storage is persisted and shared between runs of the offchain workers,
+		// and offchain workers may run concurrently. We can use the `mutate` function, to
+		// write a storage entry in an atomic fashion.
+		//
+		// It has a similar API as `StorageValue` that offer `get`, `set`, `mutate`.
+		// If we are using a get-check-set access pattern, we likely want to use `mutate` to access
+		// the storage in one go.
+		//
+		// Ref: https://substrate.dev/rustdocs/v2.0.0-rc3/sp_runtime/offchain/storage/struct.StorageValueRef.html
+		if let Some(Some(gh_info)) = s_info.get::<GithubInfo>() {
+			// gh-info has already been fetched. Return early.
+			debug::info!("cached gh-info: {:?}", gh_info);
+			return Ok(());
+		}
+
+		// We are implementing a mutex lock here with `s_lock`
+		let res: Result<Result<bool, bool>, Error<T>> = s_lock.mutate(|s: Option<Option<bool>>| {
+			match s {
+				// `s` can be one of the following:
+				//   `None`: the lock has never been set. Treated as the lock is free
+				//   `Some(None)`: unexpected case, treated it as AlreadyFetch
+				//   `Some(Some(false))`: the lock is free
+				//   `Some(Some(true))`: the lock is held
+
+				// If the lock has never been set or is free (false), return true to execute `fetch_n_parse`
+				None | Some(Some(false)) => Ok(true),
+
+				// Otherwise, someone already hold the lock (true), we want to skip `fetch_n_parse`.
+				// Covering cases: `Some(None)` and `Some(Some(true))`
+				_ => Err(<Error<T>>::AlreadyFetched),
+			}
+		});
+
+		// Cases of `res` returned result:
+		//   `Err(<Error<T>>)` - lock is held, so we want to skip `fetch_n_parse` function.
+		//   `Ok(Err(true))` - Another ocw is writing to the storage while we set it,
+		//                     we also skip `fetch_n_parse` in this case.
+		//   `Ok(Ok(true))` - successfully acquire the lock, so we run `fetch_n_parse`
+		if let Ok(Ok(true)) = res {
+			match Self::fetch_n_parse() {
+				Ok(gh_info) => {
+					// set gh-info into the storage and release the lock
+					s_info.set(&gh_info);
+					s_lock.set(&false);
+
+					debug::info!("fetched gh-info: {:?}", gh_info);
+				}
+				Err(err) => {
+					// release the lock
+					s_lock.set(&false);
+					return Err(err);
+				}
+			}
+		}
+		Ok(())
+	}
+
+	/// Fetch from remote and deserialize the JSON to a struct
+	fn fetch_n_parse() -> Result<GithubInfo, Error<T>> {
+		let resp_bytes = Self::fetch_from_remote().map_err(|e| {
+			debug::error!("fetch_from_remote error: {:?}", e);
+			<Error<T>>::HttpFetchingError0
+		})?;
+
+		let resp_str = str::from_utf8(&resp_bytes).map_err(|_| <Error<T>>::HttpFetchingError1)?;
+		// Print out our fetched JSON string
+		debug::info!("{}", resp_str);
+
+		// Deserializing JSON to struct, thanks to `serde` and `serde_derive`
+		let gh_info: GithubInfo =
+			serde_json::from_str(&resp_str).map_err(|_| <Error<T>>::HttpFetchingError2)?;
+		Ok(gh_info)
+	}
+
+	/// This function uses the `offchain::http` API to query the remote github information,
+	///   and returns the JSON response as vector of bytes.
+	fn fetch_from_remote() -> Result<Vec<u8>, Error<T>> {
+		let remote_url_bytes = HTTP_REMOTE_REQUEST_BYTES.to_vec();
+		//let user_agent = HTTP_HEADER_USER_AGENT.to_vec();
+		let task_queue_thing = Self::task_queue_by_number(1);
+		let user_agent_bytes = task_queue_thing.http_header_usr;
+		let user_agent = str::from_utf8(&user_agent_bytes).map_err(|_| <Error<T>>::HttpFetchingError3)?;
+		debug::info!("from the task queue --> {}", user_agent);
+
+		let remote_url =
+			str::from_utf8(&remote_url_bytes).map_err(|_| <Error<T>>::HttpFetchingError4)?;
+
+		debug::info!("sending request to: {}", remote_url);
+
+		// Initiate an external HTTP GET request. This is using high-level wrappers from `sp_runtime`.
+		let request = rt_offchain::http::Request::get(remote_url);
+
+		// Keeping the offchain worker execution time reasonable, so limiting the call to be within 3s.
+		let timeout = sp_io::offchain::timestamp().add(rt_offchain::Duration::from_millis(3000));
+
+		// For github API request, we also need to specify `user-agent` in http request header.
+		//   See: https://developer.github.com/v3/#user-agent-required
+		let pending = request
+			.add_header(
+				"User-Agent",
+				str::from_utf8(&user_agent_bytes).map_err(|_| <Error<T>>::HttpFetchingError5)?,
+			)
+			.deadline(timeout) // Setting the timeout time
+			.send() // Sending the request out by the host
+			.map_err(|_| <Error<T>>::HttpFetchingError6)?;
+
+		// By default, the http request is async from the runtime perspective. So we are asking the
+		//   runtime to wait here.
+		// The returning value here is a `Result` of `Result`, so we are unwrapping it twice by two `?`
+		//   ref: https://substrate.dev/rustdocs/v2.0.0-rc3/sp_runtime/offchain/http/struct.PendingRequest.html#method.try_wait
+		let response = pending
+			.try_wait(timeout)
+			.map_err(|_| <Error<T>>::HttpFetchingError7)?
+			.map_err(|_| <Error<T>>::HttpFetchingError8)?;
+
+		if response.code != 200 {
+			debug::error!("Unexpected http request status code: {}", response.code);
+			return Err(<Error<T>>::HttpFetchingError9);
+		}
+
+		// Next we fully read the response body and collect it to a vector of bytes.
+		Ok(response.body().collect::<Vec<u8>>())
+	}
+
+	fn signed_submit_agent() -> Result<(), Error<T>> {
+		let signer = Signer::<T, T::AuthorityId>::all_accounts();
+		if !signer.can_sign() {
+			debug::error!("No local account available -- boi"); // HELP HERE
+			return Err(<Error<T>>::SignedSubmitNumberError);
+		}
+		let s_info = StorageValueRef::persistent(b"offchain-demo::gh-info");
+		if let Some(Some(gh_info)) = s_info.get::<GithubInfo>() {
+			debug::info!("cached gh-info in submit function: {:?}", gh_info.apn);
+			let b_i = 2;
+			let s_a = gh_info.apn;
+			let a_n = gh_info.agencyname;
+			let a_a = gh_info.shape_area;
+
+			let results = signer.send_signed_transaction(|_acct| {
+				Call::submit_apn_signed(b_i, s_a, a_n.clone(), a_a)
+			});
+			for (acc, res) in &results {
+				match res {
+					Ok(()) => {
+						debug::native::info!(
+							"off-chain send_signed: acc: {:?}| apn: {:#?}",
+							acc.id,
+							s_a.clone()
+						);
+					}
+					Err(e) => {
+						debug::error!("[{:?}] Failed in signed_submit_number: {:?}", acc.id, e);
+						return Err(<Error<T>>::SignedSubmitNumberError);
+					}
+				};
+			}
+		};
+
+		Ok(())
 	}
 }
