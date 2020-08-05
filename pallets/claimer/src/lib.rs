@@ -54,7 +54,7 @@ pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"demo");
 pub const NUM_VEC_LEN: usize = 10;
 
 // We are fetching information from github public API about organisation `substrate-developer-hub`.
-pub const HTTP_REMOTE_REQUEST_BYTES: &[u8] = b"https://github.com/spencerbh/sandbox/blob/master/18102019manualstrip.json";
+pub const HTTP_REMOTE_REQUEST_BYTES: &[u8] = b"https://spencerbh.github.io/sandbox/18102019manualstrip.json";
 pub const HTTP_HEADER_USER_AGENT: &[u8] = b"spencerbh";
 
 /// Based on the above `KeyTypeId` we need to generate a pallet-specific crypto type wrappers.
@@ -233,8 +233,8 @@ decl_storage! {
 decl_event! (
 	pub enum Event<T>
 	where
-		<T as system::Trait>::Hash,
-		<T as balances::Trait>::Balance,
+		//<T as system::Trait>::Hash,
+		//<T as balances::Trait>::Balance,
 		AccountId = <T as system::Trait>::AccountId,
 	{
 		/// Event generated when a new number is accepted to contribute to the average.
@@ -248,7 +248,7 @@ decl_event! (
 		// fields of the apn_token and the annual_allocation fields
 		//NewApnTokenByExistingAnnualAllocation(u32, u32, Hash, Balance),
 		// ""
-		NewApnTokenByNewAnnualAllocation(u32, u32, Hash, Balance),
+		//NewApnTokenByNewAnnualAllocation(u32, u32, Hash, Balance),
 	}
 );
 
@@ -323,9 +323,10 @@ decl_module! {
 
 		// Create an ApnToken with given parameters and link to existing basin
 		//
+		// @param basin_id used as basin identification
 		// @param super_apn apn used as ID
-		// @area area of APN related to ApnToken
-		// @balance AcreFeet of water allocated to that ApnToken
+		// @param agency_name 
+		// @param area of APN related to ApnToken
 
 		#[weight = 0]
 		pub fn submit_apn_signed(origin, basin_id: u32, super_apn: u32, agency_name: Vec<u8>, area: u32) -> DispatchResult {
@@ -370,7 +371,7 @@ decl_module! {
 			let result = 
 				if Self::queue_available() == true {
 					debug::info!("there is a task in the queue");
-					QueueAvailable::put(false);
+					//QueueAvailable::put(false);
 					debug::info!("the task status is {:?}", Self::queue_available());
 					Self::fetch_if_needed()
 				//DataAvailable::put(true);
@@ -386,7 +387,7 @@ decl_module! {
 
 impl<T: Trait> Module<T> {
 	fn update_apn(who: Option<T::AccountId>, basin_id: u32, super_apn: u32, agency_name: Vec<u8>, area: u32) -> DispatchResult {
-		debug::info!("some info from offchain woah ---> "); //basin {:?} | apn {:?} | agency_name {:?} | area {:?}", basin_id, super_apn, agency_name, area);
+		debug::info!("some info from offchain woah --->  basin {:?} | apn {:?} | agency_name {:?} | area {:?}", basin_id, super_apn, agency_name, area);
 		// Create new ApnToken
 		let apn_token = ApnToken {
 			super_apn,
@@ -398,7 +399,9 @@ impl<T: Trait> Module<T> {
 		// Inserts the ApnToken on-chain, mapping to the basin id and the super_apn
 		//<ApnTokensBySuperApns<T>>::insert((basin_id, super_apn), apn_token); // this is for when we use the balance trait
 		<ApnTokensBySuperApns>::insert((basin_id, super_apn), apn_token);
+
 		// Emits event
+		Self::deposit_event(RawEvent::NewApnTokenClaimed(basin_id,super_apn));
 		Ok(())
 	}
 
@@ -423,7 +426,7 @@ impl<T: Trait> Module<T> {
 		// Ref: https://substrate.dev/rustdocs/v2.0.0-rc3/sp_runtime/offchain/storage/struct.StorageValueRef.html
 		if let Some(Some(gh_info)) = s_info.get::<GithubInfo>() {
 			// gh-info has already been fetched. Return early.
-			debug::info!("cached gh-info: {:?}", gh_info);
+			debug::info!("cached gh-info 1: {:?}", gh_info);
 			return Ok(());
 		}
 
@@ -543,7 +546,9 @@ impl<T: Trait> Module<T> {
 			return Err(<Error<T>>::SignedSubmitNumberError);
 		}
 		let s_info = StorageValueRef::persistent(b"offchain-demo::gh-info");
+		debug::info!("we got to here 0.1");
 		if let Some(Some(gh_info)) = s_info.get::<GithubInfo>() {
+			debug::info!("we got to here 0.2");
 			debug::info!("cached gh-info in submit function: {:?}", gh_info.apn);
 			let b_i = 2;
 			let s_a = gh_info.apn;
@@ -563,7 +568,8 @@ impl<T: Trait> Module<T> {
 						);
 					}
 					Err(e) => {
-						debug::error!("[{:?}] Failed in signed_submit_number: {:?}", acc.id, e);
+						//debug::error!("[{:?}] Failed in signed_submit_number: {:?}", acc.id, e);
+						debug::error!("[{:?}] Failed in signed_submit_number", acc.id);
 						return Err(<Error<T>>::SignedSubmitNumberError);
 					}
 				};
