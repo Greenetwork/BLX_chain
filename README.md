@@ -46,7 +46,7 @@ Creates some *related* data structures for and manually put information into:
 
 Diagram of BLX_network this repo currently contains the __Substrate Claimer Pallet__  
 
-![image](https://drive.google.com/file/d/1F6F5cAr8El8iRzhxb95JW2UIjEAhxsSu/view?usp=sharing)
+![image](https://drive.google.com/uc?export=view&id=1F6F5cAr8El8iRzhxb95JW2UIjEAhxsSu)
 
 Hackusama - HACKATHON GOALS:
 * Contribution to Decentralization and Web 3.0 Friendliness (25%)
