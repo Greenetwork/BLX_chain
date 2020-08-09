@@ -1,7 +1,7 @@
 BLX_chain Claimer module ⚖️
 
 To run on local machine:
-- [install substrate](https://substrate.dev/docs/en/tutorials/create-your-first-substrate-chain/)
+- curl https://getsubstrate.io -sSf | bash -s -- --fast
 - clone repo
 - cd into BLX_chain/node
 - (build it using [--release](https://doc.rust-lang.org/book/ch01-03-hello-cargo.html?highlight=--release#building-for-release) and development key injection into onchain keystore using --features ocw) $ `cargo build --release --features ocw`
