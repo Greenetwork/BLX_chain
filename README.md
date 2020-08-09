@@ -13,8 +13,10 @@ To run on local machine:
 - navigate to the settings -> developer and put the contents of types.json (located in main dir) into the box and save. 
 - now explore creating ApnTokens with the claimer pallet accessible via the extrinsics tab 
 - this is done via two step process by the claimer pallet 
-- extrinsic #1 -> _insertNewTask_ here put in task # (use `1`), basin (use `2`), and apn (use `18102019`), and submit, watch terminal output of chain for confirmation that data is being fetched
+- extrinsic #1 -> _insertNewTask_ here put in the apn (use `18102019`), and submit, watch terminal output of chain for confirmation that data is being fetched
 - extrinsic #2 -> _emptyTasks_ here submit the extrinsic without input, the offchain worker defaults to attempting to submit a signed transaction so long as there is no task in the queue, so by removing the task we are in a round-about way submitting the offchain worker data back on chain
+
+- the data is now onchain, it is not associated with any account, future work will tie it to a particular account so that there is ownership
 
 A new FRAME-based Substrate node, ~~ready for hacking.~~ thats been hacked to pieces!
 

@@ -165,7 +165,7 @@ pub struct TaskQueue {
  #[serde(crate = "alt_serde")]
  #[derive(Deserialize, Encode, Decode, Default,Debug)]
  pub struct TaskQueueTwo {
-	 basin: u32,
+ //	 basin: u32,
 	 apn: u32,
  }
 
@@ -226,6 +226,8 @@ decl_storage! {
 			map hasher(blake2_128_concat) u32 => TaskQueueTwo;
 		// A bool to track if there is a task in the queue to be fetched via HTTP
 		QueueAvailable get(fn queue_available): bool;
+
+		TaskNumber get(fn task_number): u32;
 	}
 }
 
@@ -283,12 +285,16 @@ decl_module! {
 
 		/// Adds a new task to the TaskQueue
 		#[weight = 0]
-		pub fn insert_new_task(origin, task_number: u32, basin: u32, apn: u32) -> DispatchResult {
+		pub fn insert_new_task(origin, 
+			//task_number: u32, 
+			//basin: u32, 
+			apn: u32) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 			let task_queue = TaskQueueTwo {
-				basin,
+				//basin,
 				apn,
 			};
+			let task_number = 1;
 			<TaskQueueByNumber>::insert(task_number, task_queue);
 			QueueAvailable::put(true);
 			Ok(())
