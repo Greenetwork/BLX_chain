@@ -24,6 +24,7 @@ std = [
     'sudo/std',
     'system/std',
     'timestamp/std',
+   	'transaction-payment/std',
     'transaction-payment/std',
     'template/std',
     'claimer/std',

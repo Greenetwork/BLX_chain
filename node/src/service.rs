@@ -5,7 +5,9 @@ use std::time::Duration;
 use sc_client_api::ExecutorProvider;
 use sc_consensus::LongestChain;
 use node_template_runtime::{self, opaque::Block, RuntimeApi};
-use sc_service::{error::{Error as ServiceError}, AbstractService, Configuration, ServiceBuilder};
+use sc_network::config::DummyFinalityProofRequestBuilder;
+//use sc_service::{error::{Error as ServiceError}, AbstractService, Configuration, ServiceBuilder};
+use sc_service::{error::Error as ServiceError, AbstractService, Configuration, ServiceBuilder};
 use sp_inherents::InherentDataProviders;
 use sc_executor::native_executor_instance;
 pub use sc_executor::NativeExecutor;
@@ -99,7 +101,26 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 	let name = config.network.node_name.clone();
 	let disable_grandpa = config.disable_grandpa;
 
+	// This variable is only used when ocw feature is enabled.
+	// Suppress the warning when ocw feature is not enabled.
+	#[allow(unused_variables)]
+	let dev_seed = config.dev_key_seed.clone();
+
+	// This isn't great. It includes the timestamp inherent in all blocks
+	// regardless of runtime.
+	let inherent_data_providers = InherentDataProviders::new();
+	inherent_data_providers
+		.register_provider(sp_timestamp::InherentDataProvider)
+		.map_err(Into::into)
+		.map_err(sp_consensus::error::Error::InherentData)?;
+
+	//let builder = new_full_start!(config);
 	let (builder, mut import_setup, inherent_data_providers) = new_full_start!(config);
+
+	//let service = builder.build()?;
+
+
+
 
 	let (block_import, grandpa_link) =
 		import_setup.take()
@@ -112,6 +133,21 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, provider)) as _)
 		})?
 		.build_full()?;
+
+	// Initialize seed for signing transaction using off-chain workers
+	#[cfg(feature = "ocw")]
+	{
+		if let Some(seed) = dev_seed {
+			service
+				.keystore()
+				.write()
+				.insert_ephemeral_from_seed_by_type::<node_template_runtime::claimer::crypto::Pair>(
+					&seed,
+					node_template_runtime::claimer::KEY_TYPE,
+				)
+				.expect("Dev Seed should always succeed.");
+		}
+	}
 
 	if role.is_authority() {
 		let proposer = sc_basic_authorship::ProposerFactory::new(
