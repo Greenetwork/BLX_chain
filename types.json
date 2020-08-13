@@ -15,7 +15,6 @@
     "http_header_usr": "Vec<u8>"
   },
     "TaskQueueTwo": {
-    "basin": "u32",
     "apn": "u32"
   }
 }

@@ -1,22 +1,23 @@
-BLX_chain Claimer module ⚖️
+# BLX_chain Claimer module ⚖️
 
-To run on local machine:
-- curl https://getsubstrate.io -sSf | bash -s -- --fast
-- clone repo
-- cd into BLX_chain/node
-- (build it using [--release](https://doc.rust-lang.org/book/ch01-03-hello-cargo.html?highlight=--release#building-for-release) and development key injection into onchain keystore using --features ocw) $ `cargo build --release --features ocw`
-- cd up one level to main dir
-- (clear any data from previous development node) $ `./target/release/node-template purge-chain --dev`
-- (start the development node) $ `./target/release/node-template --dev`
-- navigate to [Apps JS](https://polkadot.js.org/apps/#/settings/developer)
-- change to local node via node selector in upper left, choose last option for local node
-- navigate to the settings -> developer and put the contents of types.json (located in main dir) into the box and save. 
-- now explore creating ApnTokens with the claimer pallet accessible via the extrinsics tab 
+## To run on local machine (other methods not yet supported):
+- $ `curl https://getsubstrate.io -sSf | bash -s -- --fast`
+- install [yarn](https://yarnpkg.com/getting-started)
+- clone this repo $ `git clone https://github.com/Greenetwork/BLX_chain`
+- add executable permissions to shell script with $ `chmod +x basin_logix_run.sh`
+- compile and run chain and start front end with $ `./basin_logix_run.sh`
+- make sure to clear the chain's development data when necessary with $ `BLX_chain/target/release/node-template purge-chain --dev`
+
+## Interacting with BLX_chain
 - this is done via two step process by the claimer pallet 
 - extrinsic #1 -> _insertNewTask_ here put in the apn (use `18102019`), and submit, watch terminal output of chain for confirmation that data is being fetched
 - extrinsic #2 -> _emptyTasks_ here submit the extrinsic without input, the offchain worker defaults to attempting to submit a signed transaction so long as there is no task in the queue, so by removing the task we are in a round-about way submitting the offchain worker data back on chain
 
 - the data is now onchain, it is not associated with any account, future work will tie it to a particular account so that there is ownership
+
+## odds and ends
+- if not using the shell script (build chain using [--release](https://doc.rust-lang.org/book/ch01-03-hello-cargo.html?highlight=--release#building-for-release) and development key injection into onchain keystore using --features ocw) $ `cargo build --release --features ocw`
+
 
 A new FRAME-based Substrate node, ~~ready for hacking.~~ thats been hacked to pieces!
 
@@ -30,7 +31,7 @@ A new FRAME-based Substrate node, ~~ready for hacking.~~ thats been hacked to pi
 
 *  Composable tokens likely required, meaning ApnToken (NFT) might need to be able to own another NFT or ERC-20 style token, Annual Allocation. NFT vs ERC-20 token choice will determine if all water in basin is considered the equal or not. 
 
-* Front end idea - [polkadash](https://dotleap.com/polkadash-a-vuejs-dashboard-starter-kit-for-your-substrate-chain/)
+* Front end idea - ~~[polkadash](https://dotleap.com/polkadash-a-vuejs-dashboard-starter-kit-for-your-substrate-chain/)~~ moved forward with a [modified Substrate-fronend-template](https://github.com/Greenetwork/BLX_frontend) (react)
   
 ## What this does right now?:
 

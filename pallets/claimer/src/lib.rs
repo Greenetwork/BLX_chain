@@ -208,10 +208,13 @@ impl fmt::Debug for GithubInfo {
 decl_storage! {
 	trait Store for Module<T: Trait> as Dmap {
 		
-		// yes WORKING, remember to update types
-		// Get Apn Tokens from basin_id, super_apn
+		// Get Apn Tokens from account_id, super_apn
+		//pub ApnTokensBySuperApns get(fn super_things_by_super_apns):
+		//	map hasher(blake2_128_concat) (T::AccountId, u32) => ApnToken;//<T::Balance>;
+
+		// Get Apn Tokens from account_id, super_apn
 		pub ApnTokensBySuperApns get(fn super_things_by_super_apns):
-			map hasher(blake2_128_concat) (u32,u32) => ApnToken;//<T::Balance>;
+			map hasher(blake2_128_concat) u32 => ApnToken;//<T::Balance>;			
 		// not used at the moment
 		NextBasinId get (fn next_basin_id): u32;
 		// Basin map
@@ -371,7 +374,8 @@ impl<T: Trait> Module<T> {
 
 		// Inserts the ApnToken on-chain, mapping to the basin id and the super_apn
 		//<ApnTokensBySuperApns<T>>::insert((basin_id, super_apn), apn_token); // this is for when we use the balance trait
-		<ApnTokensBySuperApns>::insert((basin_id, super_apn), apn_token);
+		//<ApnTokensBySuperApns<T>>::insert((who, super_apn), apn_token); // for with future ownership
+		<ApnTokensBySuperApns>::insert(super_apn, apn_token);
 
 		// Emits event
 		Self::deposit_event(RawEvent::NewApnTokenClaimed(basin_id,super_apn));
