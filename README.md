@@ -9,6 +9,7 @@
 - make sure to clear the chain's development data when necessary with $ `BLX_chain/target/release/node-template purge-chain --dev`
 
 ## Interacting with BLX_chain
+demo is here https://youtu.be/aiY_yprYokA starts at 1:48
 - this is done via two step process by the claimer pallet 
 - extrinsic #1 -> _insertNewTask_ here put in the apn (use `18102019`), and submit, watch terminal output of chain for confirmation that data is being fetched
 - extrinsic #2 -> _emptyTasks_ here submit the extrinsic without input, the offchain worker defaults to attempting to submit a signed transaction so long as there is no task in the queue, so by removing the task we are in a round-about way submitting the offchain worker data back on chain
