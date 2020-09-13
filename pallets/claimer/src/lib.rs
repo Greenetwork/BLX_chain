@@ -122,14 +122,16 @@ pub struct BasinOwnerId<AccountId> {
 }
 
 #[serde(crate = "alt_serde")]
-#[derive(Deserialize, Encode, Decode, Default,Debug)]
+#[derive(Deserialize, Encode, Decode, Default, Debug)]
 pub struct ApnToken<
-	//Hash, 
+	//Hash,
+	AccountId,
 	//Balance
 	> {
 	super_apn: u32,
 	agency_name: Vec<u8>,
 	area: u32,
+	owner: AccountId,
 	//balance: Balance,
 	//annual_allocation: AnnualAllocation<Hash>, // needs to be converted to vector of structs or similar, review substrate kitties for more
 }
@@ -212,18 +214,26 @@ decl_storage! {
 		//pub ApnTokensBySuperApns get(fn super_things_by_super_apns):
 		//	map hasher(blake2_128_concat) (T::AccountId, u32) => ApnToken;//<T::Balance>;
 
-		// Get Apn Tokens from account_id, super_apn
+		// Get Apn Tokens from super_apn
 		pub ApnTokensBySuperApns get(fn super_things_by_super_apns):
-			map hasher(blake2_128_concat) u32 => ApnToken;//<T::Balance>;			
+			map hasher(blake2_128_concat) u32 => ApnToken<
+			T::AccountId,
+			//T::Balance
+			>;			
+		// Get ApnToken water balance from super_apn
+		pub WaterBalanceBySuperApns get( fn water_balance_by_super_apns):
+			map hasher(blake2_128_concat) u32 => u64;
+		// Total Annual water budget in AF, will need to be spun out into seperate pallet for voting of what this number will be annually. 
+		pub TotalAnnualBudget get(fn total_annual_budget): u64 = 2100;
 		// not used at the moment
-		NextBasinId get (fn next_basin_id): u32;
+		//NextBasinId get (fn next_basin_id): u32;
 		// Basin map
-		pub Basin get(fn basin): map hasher(blake2_128_concat) u32 => BasinOwnerId<T::AccountId>;
+		//pub Basin get(fn basin): map hasher(blake2_128_concat) u32 => BasinOwnerId<T::AccountId>;
 		// not WORKING, not sure which account's keys are being injected into keystore 
 		// Balance of Apn_Tokens for owner, input is basin_id and AccountId
 		pub BalanceApnTokens get(fn balance_apntokens): map hasher(blake2_128_concat) (u32, T::AccountId) => u32;
 		// For membership, works
-		AllMembers get(fn all_members): Vec<T::AccountId>; 
+		//AllMembers get(fn all_members): Vec<T::AccountId>; 
 		/// A map of TasksQueues to numbers
 		TaskQueueByNumber get(fn task_queue_by_number):
 			map hasher(blake2_128_concat) u32 => TaskQueueTwo;
@@ -277,6 +287,7 @@ decl_error! {
 		HttpFetchingError9,
 		// Error returned when gh-info has already been fetched
 		AlreadyFetched,
+		ApnsDontMatch,
 	}
 }
 
@@ -311,21 +322,21 @@ decl_module! {
 		}
 
 		// Create the digital Basin with given no parameters, lol, useless for now
-		#[weight = 10_000]
-		fn create_basin(origin) -> DispatchResult {
-			let member = ensure_signed(origin)?;
+		//#[weight = 10_000]
+		//fn create_basin(origin) -> DispatchResult {
+		//	let member = ensure_signed(origin)?;
 			// Generate next basin ID, 
-			let basin_id = NextBasinId::get().checked_add(1).expect("basin id error");
-			NextBasinId::put(basin_id);
+		//	let basin_id = NextBasinId::get().checked_add(1).expect("basin id error");
+		//	NextBasinId::put(basin_id);
 			// Create new basin,
-			let new_basin = BasinOwnerId {
-				owner: member,
-				basin_id: basin_id,
-			};
+		//	let new_basin = BasinOwnerId {
+		//		owner: member,
+		//		basin_id: basin_id,
+		//	};
 			// Add new basin to map,
-			<Basin<T>>::insert(basin_id, new_basin);
-			Ok(())
-		}
+		//	<Basin<T>>::insert(basin_id, new_basin);
+		//	Ok(())
+		//}
 
 		// Create an ApnToken with given parameters and link to existing basin
 		//
@@ -335,10 +346,10 @@ decl_module! {
 		// @param area of APN related to ApnToken
 
 		#[weight = 0]
-		pub fn submit_apn_signed(origin, basin_id: u32, super_apn: u32, agency_name: Vec<u8>, area: u32) -> DispatchResult {
+		fn submit_apn_signed(origin, basin_id: u32, super_apn: u32, agency_name: Vec<u8>, area: u32) -> DispatchResult {
 			debug::info!("submit_apn_signed: {:?}", super_apn);
 			let who = ensure_signed(origin)?;
-			Self::update_apn(Some(who), basin_id, super_apn, agency_name, area)
+			Self::update_apn(who, basin_id, super_apn, agency_name, area)
 		}
 
 		fn offchain_worker(block_number: T::BlockNumber) {
@@ -362,23 +373,37 @@ decl_module! {
 
 
 impl<T: Trait> Module<T> {
-	fn update_apn(who: Option<T::AccountId>, basin_id: u32, super_apn: u32, agency_name: Vec<u8>, area: u32) -> DispatchResult {
+	fn update_apn(who: T::AccountId, basin_id: u32, super_apn: u32, agency_name: Vec<u8>, area: u32) -> DispatchResult {
 		debug::info!("some info from offchain woah --->  basin {:?} | apn {:?} | agency_name {:?} | area {:?}", basin_id, super_apn, agency_name, area);
+		//let who = ensure_signed(who)?;
+		let task_queue_thing = Self::task_queue_by_number(1);
+		// fetching what APN we used to submit task
+		let apn_bytes = task_queue_thing.apn; 
+		// checking to make sure that the APN we used to submit the task with is in the json that we were returned via offchain worker
+		ensure!(apn_bytes == super_apn, <Error<T>>::ApnsDontMatch);
+		if apn_bytes == super_apn {
+			debug::info!("matchy matchy")}
 		// Create new ApnToken
-		let apn_token = ApnToken {
+		let apn_token = ApnToken::<
+		T::AccountId, 
+		//T::Balance
+		> {
 			super_apn,
 			agency_name,
 			area,
+			owner: who,
 			//balance: 1337 // this is balance of Acre-feet for the ApnToken, arbitrary number for now
 		};
 
 		// Inserts the ApnToken on-chain, mapping to the basin id and the super_apn
 		//<ApnTokensBySuperApns<T>>::insert((basin_id, super_apn), apn_token); // this is for when we use the balance trait
 		//<ApnTokensBySuperApns<T>>::insert((who, super_apn), apn_token); // for with future ownership
-		<ApnTokensBySuperApns>::insert(super_apn, apn_token);
-
+		<ApnTokensBySuperApns<T>>::insert(super_apn, apn_token);
 		// Emits event
 		Self::deposit_event(RawEvent::NewApnTokenClaimed(basin_id,super_apn));
+		// Create the WaterBalance fill with 0 for now, will be added to in other pallets
+		let emptytank = 0;
+		<WaterBalanceBySuperApns>::insert(super_apn, emptytank);
 		Ok(())
 	}
 
@@ -485,7 +510,7 @@ impl<T: Trait> Module<T> {
 
 		debug::info!("sending request to: {}", remote_url);
 
-		// Initiate an external HTTP GET request. This is using high-level wrappers from `sp_runtime`.
+		// Initiate an external HTTP GET request. This is using high-level wrappers from `sp_runtime`. this is going to need to be fed the apn_bytes
 		let request = rt_offchain::http::Request::get(remote_url);
 
 		// Keeping the offchain worker execution time reasonable, so limiting the call to be within 3s.
