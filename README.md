@@ -27,19 +27,22 @@ A new FRAME-based Substrate node, ~~ready for hacking.~~ thats been hacked to pi
 *  All tests are for sure broken  
 
 *  Needs testing with multiple parties (Accounts), multiple apns (ApnTokens)
+   *  will come after DB implementation
 
-*  Not entirely sure who owns the claimed ApnToken, assuming its Alice, but requires more work to confirm
+*  ApnToken now has owner field, other pallets will need to leverage this owner field and the method of tracking ownership
 
-*  Composable tokens likely required, meaning ApnToken (NFT) might need to be able to own another NFT or ERC-20 style token, Annual Allocation. NFT vs ERC-20 token choice will determine if all water in basin is considered the equal or not. 
+*  ~~Composable tokens likely required, meaning ApnToken (NFT) might need to be able to own another NFT or ERC-20 style token, Annual Allocation. NFT vs ERC-20 token choice will determine if all water in basin is considered the equal or not.~~
+   *  ApnToken's (NFT) index = Apn is also used at the index for `WaterBalanceBySuperApns`
+   *  the WaterBalance "tokens/balance" will be fungible on certain interfaces (voting) but non-fungible in others (trading)
 
 * Front end idea - ~~[polkadash](https://dotleap.com/polkadash-a-vuejs-dashboard-starter-kit-for-your-substrate-chain/)~~ moved forward with a [modified Substrate-fronend-template](https://github.com/Greenetwork/BLX_frontend) (react)
   
 ## What this does right now?:
 
 Creates some *related* data structures for and manually put information into:
-* basins - probably broken
+* basins - depricated for now
 * ApnTokens (Digitized Water Rights) - preliminary information store on chain for now
-* Annual Allocations for each Apntoken(not sure here yet)
+* WaterBalance for each Apntoken(not sure here yet)
 
 ## Directory definitions:
 * node - this contains code which runs the node, usually this doesnt get hacked on too hard, mostly left alone
@@ -50,21 +53,5 @@ Creates some *related* data structures for and manually put information into:
 
 Diagram of BLX_network this repo currently contains the __Substrate Claimer Pallet__  
 
-![image](https://drive.google.com/uc?export=view&id=1F6F5cAr8El8iRzhxb95JW2UIjEAhxsSu)
+![image](https://drive.google.com/uc?export=view&id=1W2lAew1JVMTzfz0HG1TjvkLSxI0cJ1aJ)
 
-Hackusama - HACKATHON GOALS:
-* Contribution to Decentralization and Web 3.0 Friendliness (25%)
- 
- Includes how useful the blockchain or tooling is in the Kusama, Polkadot, and Web 3.0 ecosystem as a whole.
-
-* Originality, Creativity, and Innovation (25%)
-
-Includes how new and novel the submission is versus existing technologies.
-
-* Technical Difficulty (25%)
-
-Includes the level of skill or knowledge required to build the parachain or tools.
-
-* User Experience (25%)
-
-Includes how intuitive and understandable the submission is for potential users.
