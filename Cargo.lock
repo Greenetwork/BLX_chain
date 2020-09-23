@@ -11,6 +11,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "account-set"
+version = "2.0.0-rc4"
+dependencies = [
+ "sp-std",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -506,6 +513,7 @@ dependencies = [
 name = "claimer"
 version = "2.0.0-rc4"
 dependencies = [
+ "account-set",
  "alt_serde",
  "frame-support",
  "frame-system",
@@ -516,6 +524,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "water-balance",
 ]
 
 [[package]]
@@ -2839,6 +2848,7 @@ dependencies = [
  "sp-finality-grandpa",
  "sp-inherents",
  "sp-runtime",
+ "sp-timestamp",
  "sp-transaction-pool",
  "structopt",
  "substrate-build-script-utils",
@@ -7001,6 +7011,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce85d72b74242c340e9e3492cfb602652d7bb324c3172dd441b5577e39a2e18c"
 dependencies = [
  "wast",
+]
+
+[[package]]
+name = "water-balance"
+version = "2.0.0-rc4"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "pallet-balances",
+ "parity-scale-codec",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

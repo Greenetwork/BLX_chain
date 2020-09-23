@@ -14,6 +14,11 @@ use frame_support::{
 	traits::Get, // no idea
 };
 
+use water_balance::WaterBalance;
+use account_set::AccountSet;
+use sp_std::collections::btree_set::BTreeSet;
+
+
 use parity_scale_codec::{Decode, Encode};
 
 use frame_system::{
@@ -40,6 +45,7 @@ use sp_runtime::{
 // We use `alt_serde`, and Xanewok-modified `serde_json` so that we can compile the program
 //   with serde(features `std`) and alt_serde(features `no_std`).
 use alt_serde::{Deserialize, Deserializer};
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -89,9 +95,6 @@ pub mod crypto {
 	}
 }
 
-/////////////////////////////////////////////////////////////////////////////////// //////////////
- 
- 
 /// This is the pallet's configuration trait
 pub trait Trait: balances::Trait + system::Trait + CreateSignedTransaction<Call<Self>> {
 	/// The identifier type for an offchain worker.
@@ -100,6 +103,8 @@ pub trait Trait: balances::Trait + system::Trait + CreateSignedTransaction<Call<
 	type Call: From<Call<Self>>;
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+
+	type WaterBalanceSource: WaterBalance<Balance = Self::Balance>;
 }
 
 // Custom data type
@@ -219,7 +224,7 @@ decl_storage! {
 			map hasher(blake2_128_concat) u32 => ApnToken<
 			T::AccountId,
 			//T::Balance
-			>;			
+			>;
 		// Get ApnToken water balance from super_apn
 		pub WaterBalanceBySuperApns get( fn water_balance_by_super_apns):
 			map hasher(blake2_128_concat) u32 => u64;
@@ -241,6 +246,13 @@ decl_storage! {
 		QueueAvailable get(fn queue_available): bool;
 
 		TaskNumber get(fn task_number): u32;
+
+		// Testing type sharing between pallets for balances using trait, this is its pallet specific storage
+		pub TBalance get (fn fetch_balance): 
+			map hasher(blake2_128_concat) u32 => u32;
+
+		// The set of all members. Stored as a single vec
+		Members get(fn members): Vec<T::AccountId>;
 	}
 }
 
@@ -251,10 +263,12 @@ decl_event! (
 	where
 		//<T as system::Trait>::Hash,
 		//<T as balances::Trait>::Balance,
+		//ApnBalance = <T as system::Trait>::Balance,
+
 		AccountId = <T as system::Trait>::AccountId,
 	{
 		/// Event generated when a new number is accepted to contribute to the average.
-		NewNumber(Option<AccountId>, u64),
+		//NewNumber(Option<AccountId>, u64),
 		/// New member for `AllMembers` group
 		NewMember(AccountId),
 		/// New ApnToken claimed event includes basin_id, super_apn
@@ -371,6 +385,30 @@ decl_module! {
 	}
 }
 
+
+impl<T: Trait> WaterBalance for Module<T> {
+	type Balance = T::Balance;
+    /// The balance of an apn 
+    fn findbalance (apn: u32) -> Self::Balance {
+		Self::fetch_balance(&apn).total()
+		//fetch_balance(&apn);
+	}
+
+    // The total amount of issuance in the system, aka total amount of allocated water in the system
+    // which has yet to be spent
+	//fn total_unspent_waterbalance() -> T::Balance {
+	//	Self::fetch_balance()
+	//}
+}
+
+
+//impl<T: Trait> AccountSet for Module<T> {
+//	type AccountIdd = T::AccountIdd;
+
+//	fn accounts() -> BTreeSet<T::AccountIdd> {
+//		Self::members().into_iter().collect::<BTreeSet<_>>()
+//	}
+//}
 
 impl<T: Trait> Module<T> {
 	fn update_apn(who: T::AccountId, basin_id: u32, super_apn: u32, agency_name: Vec<u8>, area: u32) -> DispatchResult {

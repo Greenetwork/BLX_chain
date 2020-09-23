@@ -13,8 +13,11 @@ std = [
     'frame-system/std',
     'balances/std',
     'sp-runtime/std',
-    'sp-std/std'
+    'sp-std/std',
+    'water-balance/std',
+    'account-set/std'
 ]
+
 #cargo-features = ["resolver"]
 [package.metadata.substrate]
 categories = [
@@ -37,6 +40,8 @@ serde_json = { version = "1", default-features = false, git = "https://github.co
 sp-core = { version = '2.0.0-rc4', default-features = false }
 sp-io = { version = '2.0.0-rc4', default-features = false }
 #geojson = { version = "0.18.0", default-features = false }
+water-balance = { path = '../../traits/water-balance', default-features = false }
+account-set = { path = '../../traits/account-set', default-features = false }
 
 
 
