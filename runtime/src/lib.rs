@@ -70,6 +70,10 @@ pub type Hash = sp_core::H256;
 /// Digest item type.
 pub type DigestItem = generic::DigestItem<Hash>;
 
+/// Balance of waterbalance in some APN 
+//pub type ApnBalance = AtLeast32BitUnsigned + FullCodec + Copy + Debug +
+//Default;
+
 pub use claimer;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
@@ -192,6 +196,8 @@ impl system::Trait for Runtime {
 	type OnKilledAccount = ();
 	/// The data to be stored in an account.
 	type AccountData = balances::AccountData<Balance>;
+    /// The balance of waterbalance tokens for a specific APN.
+	//type waterbalance = waterbalance;
 }
 
 impl aura::Trait for Runtime {
