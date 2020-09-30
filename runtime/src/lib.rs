@@ -76,6 +76,8 @@ pub type DigestItem = generic::DigestItem<Hash>;
 
 pub use claimer;
 
+pub use allocator;
+
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -196,7 +198,7 @@ impl system::Trait for Runtime {
 	type OnKilledAccount = ();
 	/// The data to be stored in an account.
 	type AccountData = balances::AccountData<Balance>;
-    /// The balance of waterbalance tokens for a specific APN.
+    // The balance of waterbalance tokens for a specific APN.
 	//type waterbalance = waterbalance;
 }
 
@@ -282,6 +284,12 @@ impl claimer::Trait for Runtime {
 	type Event = Event;
 }
 
+impl allocator::Trait for Runtime {
+	type Event = Event;
+	type WaterBalanceSource = Allocator;
+	type Call = Call;
+}
+
 impl<LocalCall> system::offchain::CreateSignedTransaction<LocalCall> for Runtime
 where
 	Call: From<LocalCall>,
@@ -355,6 +363,7 @@ construct_runtime!(
 		// Used for the module template in `./template.rs`
 		TemplateModule: template::{Module, Call, Storage, Event<T>},
 		Claimer: claimer::{Module, Call, Storage, Event<T>},
+		Allocator: allocator::{Module, Call, Event<T>},
 	}
 );
 

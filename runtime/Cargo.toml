@@ -28,12 +28,19 @@ std = [
     'transaction-payment/std',
     'template/std',
     'claimer/std',
+    'allocator/std',
 ]
 
 [dependencies.claimer]
 default-features = false
 package = 'claimer'
 path = '../pallets/claimer'
+version = '2.0.0-rc4'
+
+[dependencies.allocator]
+default-features = false
+package = 'allocator'
+path = '../pallets/allocator'
 version = '2.0.0-rc4'
 
 [dependencies.aura]

@@ -104,7 +104,7 @@ pub trait Trait: balances::Trait + system::Trait + CreateSignedTransaction<Call<
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 
-	type WaterBalanceSource: WaterBalance<Balance = Self::Balance>;
+	//type WaterBalanceSource: WaterBalance<Balance = Self::Balance>;
 }
 
 // Custom data type
@@ -249,7 +249,7 @@ decl_storage! {
 
 		// Testing type sharing between pallets for balances using trait, this is its pallet specific storage
 		pub TBalance get (fn fetch_balance): 
-			map hasher(blake2_128_concat) u32 => u32;
+			map hasher(blake2_128_concat) u32 => T::Balance;
 
 		// The set of all members. Stored as a single vec
 		Members get(fn members): Vec<T::AccountId>;
@@ -390,7 +390,7 @@ impl<T: Trait> WaterBalance for Module<T> {
 	type Balance = T::Balance;
     /// The balance of an apn 
     fn findbalance (apn: u32) -> Self::Balance {
-		Self::fetch_balance(&apn).total()
+		Self::fetch_balance(&apn)
 		//fetch_balance(&apn);
 	}
 
@@ -403,9 +403,9 @@ impl<T: Trait> WaterBalance for Module<T> {
 
 
 //impl<T: Trait> AccountSet for Module<T> {
-//	type AccountIdd = T::AccountIdd;
+//	type AccountId = T::AccountId;
 
-//	fn accounts() -> BTreeSet<T::AccountIdd> {
+//	fn accounts() -> BTreeSet<T::AccountId> {
 //		Self::members().into_iter().collect::<BTreeSet<_>>()
 //	}
 //}
@@ -440,7 +440,7 @@ impl<T: Trait> Module<T> {
 		// Emits event
 		Self::deposit_event(RawEvent::NewApnTokenClaimed(basin_id,super_apn));
 		// Create the WaterBalance fill with 0 for now, will be added to in other pallets
-		let emptytank = 0;
+		let emptytank = 200;
 		<WaterBalanceBySuperApns>::insert(super_apn, emptytank);
 		Ok(())
 	}

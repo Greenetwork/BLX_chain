@@ -15,6 +15,7 @@ pub trait WaterBalance {
     type Balance: AtLeast32BitUnsigned + FullCodec + Copy + MaybeSerializeDeserialize + Debug +
     Default;
 
+    // `Self::Balance` will be the type alias in the implementation.
     /// The balance of an apn 
     fn findbalance (apn: u32) -> Self::Balance;
     //fn get_space(id: SpaceId) -> Result<SpaceForRoles<Self::AccountId>, DispatchError>;
