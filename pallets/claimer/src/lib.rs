@@ -11,12 +11,12 @@ use frame_support::{
 	dispatch::DispatchResult, // the returns from a dispatachable call which is a function that a user can call as part of an extrensic
 	ensure, // used to verify things
 	storage::{StorageDoubleMap, StorageMap, StorageValue}, // storage types used
-	traits::Get, // no idea
+	traits::{Get, Imbalance}
 };
 
-use water_balance::WaterBalance;
-use account_set::AccountSet;
-use sp_std::collections::btree_set::BTreeSet;
+// use water_balance::WaterCurrency;
+// use account_set::AccountSet;
+// use sp_std::collections::btree_set::BTreeSet;
 
 
 use parity_scale_codec::{Decode, Encode};
@@ -103,9 +103,11 @@ pub trait Trait: balances::Trait + system::Trait + CreateSignedTransaction<Call<
 	type Call: From<Call<Self>>;
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-
 	//type WaterBalanceSource: WaterBalance<Balance = Self::Balance>;
+	// type Currency: WaterCurrency;//<Self::Balancey>;
 }
+
+// type BalanceyOf<T> = <<T as Trait>::Currency as WaterCurrency>::Balancey;
 
 // Custom data type
 #[derive(Debug)]
@@ -119,6 +121,8 @@ enum TransactionType {
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
 pub type GroupIndex = u32; // this is Encode (which is necessary for double_map)
+
+type Name = [u8; 32];
 
 #[derive(Encode, Decode, Default, RuntimeDebug)]
 pub struct BasinOwnerId<AccountId> {
@@ -145,6 +149,9 @@ pub struct ApnToken<
 	//<T as system::Trait>::Hash, 
 //	<T as balances::Trait>::Balance>;
 
+//not sure we need this
+// pub struct ApnAccount<T:Trait> {
+// }
 
 #[derive(Encode, Decode, Clone, Default, RuntimeDebug)]
 pub struct AnnualAllocation<Hash> {
@@ -215,6 +222,14 @@ impl fmt::Debug for GithubInfo {
 decl_storage! {
 	trait Store for Module<T: Trait> as Dmap {
 		
+		/// Registration information for a given name
+		pub Registration: map hasher(blake2_128_concat) Name => NameStatus<T::AccountId, T::BlockNumber, 
+		//BalanceOf<T>
+		>;
+
+		/// The lookup from name to account
+		pub Lookup: map hasher(blake2_128_concat) Name => Option<T::AccountId>; 
+
 		// Get Apn Tokens from account_id, super_apn
 		//pub ApnTokensBySuperApns get(fn super_things_by_super_apns):
 		//	map hasher(blake2_128_concat) (T::AccountId, u32) => ApnToken;//<T::Balance>;
@@ -248,11 +263,11 @@ decl_storage! {
 		TaskNumber get(fn task_number): u32;
 
 		// Testing type sharing between pallets for balances using trait, this is its pallet specific storage
-		pub TBalance get (fn fetch_balance): 
-			map hasher(blake2_128_concat) u32 => T::Balance;
+		// pub TBalancey get (fn fetch_balance): 
+		// 	map hasher(blake2_128_concat) u32 => BalanceyOf<T>;
 
 		// The set of all members. Stored as a single vec
-		Members get(fn members): Vec<T::AccountId>;
+		//Members get(fn members): Vec<T::AccountId>;
 	}
 }
 
@@ -260,14 +275,12 @@ decl_storage! {
 
 decl_event! (
 	pub enum Event<T>
-	where
-		//<T as system::Trait>::Hash,
-		//<T as balances::Trait>::Balance,
-		//ApnBalance = <T as system::Trait>::Balance,
-
+	where 
 		AccountId = <T as system::Trait>::AccountId,
+		Balance = BalanceOf<T>,
+		<T as frame_system::Trait>::BlockNumber,
 	{
-		/// Event generated when a new number is accepted to contribute to the average.
+		//<T as system::Trait>::Hash,BalanceOfis accepted to contribute to the average.
 		//NewNumber(Option<AccountId>, u64),
 		/// New member for `AllMembers` group
 		NewMember(AccountId),
@@ -279,6 +292,11 @@ decl_event! (
 		//NewApnTokenByExistingAnnualAllocation(u32, u32, Hash, Balance),
 		// ""
 		//NewApnTokenByNewAnnualAllocation(u32, u32, Hash, Balance),
+		NameClaimed(Name, AccountId, BlockNumber),
+		NameFreed(Name),
+		NameSet(Name),
+		NameAssigned(Name, AccountId),
+		NameUnassigned(Name)
 	}
 );
 
@@ -302,6 +320,28 @@ decl_error! {
 		// Error returned when gh-info has already been fetched
 		AlreadyFetched,
 		ApnsDontMatch,
+		/// The current state of the name does not match this step in the state machine.
+		UnexpectedState,
+		/// The name provided does not follow the configured rules.
+		InvalidName,
+		/// The bid is invalid.
+		InvalidBid,
+		/// The claim is invalid.
+		InvalidClaim,
+		/// User is not the current bidder.
+		NotBidder,
+		/// The name has not expired in bidding or ownership.
+		NotExpired,
+		/// The name is already available.
+		AlreadyAvailable,
+		/// The name is permanent.
+		Permanent,
+		/// You are not the owner of this name.
+		NotOwner,
+		/// You are not assigned to this domain.
+		NotAssigned,
+		/// Ownership extensions are not available.
+		NoExtensions,
 	}
 }
 
@@ -316,13 +356,16 @@ decl_module! {
 		pub fn insert_new_task(origin, 
 			//task_number: u32, 
 			//basin: u32, 
-			apn: u32) -> DispatchResult {
+			apn: u32,
+			amount: BalanceyOf<T>) -> DispatchResult {
 			let _ = ensure_signed(origin)?;
 			let task_queue = TaskQueueTwo {
 				//basin,
 				apn,
 			};
 			let task_number = 1;
+			//let mut tbalancey = TBalanceyOf::<T>::get()
+			// <TBalancey>::insert(&apn, amount);
 			<TaskQueueByNumber>::insert(task_number, task_queue);
 			QueueAvailable::put(true);
 			Ok(())
@@ -333,6 +376,12 @@ decl_module! {
 		pub fn empty_tasks(origin) -> DispatchResult {
 			QueueAvailable::put(false);
 			Ok(())
+		}
+
+		fn set_name(origin, name: Name, state: NameStatus<T::AccountId, T::BlockNumber) {
+			let who = ensure_signed(origin)?;
+			Registration::<T>::insert(&name, state);
+			Self::deposit_event(RawEvent::NameSet(name));
 		}
 
 		// Create the digital Basin with given no parameters, lol, useless for now
@@ -385,30 +434,46 @@ decl_module! {
 	}
 }
 
+// impl<T: Trait> WaterCurrency for Module<T> {
+// 	type Balancey = BalanceyOf<T>;
+//     type PositiveImbalance: Imbalance<Self::BalanceyOf<T>, Opposite = Self::NegativeImbalance>;
+// 	type NegativeImbalance: Imbalance<Self::BalanceyOf<T>, Opposite = Self::PositiveImbalance>;
+	
+//     /// The balance of an apn 
+//     fn findbalance (apn: u32) -> BalanceyOf<T> {
+// 		Self::fetch_balance(&apn)
+// 		//fetch_balance(&apn);
+// 	}
 
-impl<T: Trait> WaterBalance for Module<T> {
-	type Balance = T::Balance;
-    /// The balance of an apn 
-    fn findbalance (apn: u32) -> Self::Balance {
-		Self::fetch_balance(&apn)
-		//fetch_balance(&apn);
+// 	fn deposit_into_apn(apn: u32, value: Self::BalanceyOf<T>) -> Self::PositiveImbalance {
+// 		<TBalancey>
+// 	};
+
+//     // The total amount of issuance in the system, aka total amount of allocated water in the system
+//     // which has yet to be spent
+// 	//fn total_unspent_waterbalance() -> T::Balance {
+// 	//	Self::fetch_balance()
+// 	//}
+// }
+
+impl<T: Trait> StaticLookup for Module<T> {
+	type Source = MultiAddress<T::AccountId, ()>;
+	type Target = T::AccountId;
+
+	fn lookup(a: Self::Source) -> Result<Self::Target, LookupError> {
+		match a {
+			MultiAddress::Id(id) => Ok(id),
+			MultiAddress::Hash256(hash) => {
+				Lookup::<T>::get(hash).ok_or(LookupError)
+			},
+			_ => Err(LookupError),
+		}
 	}
 
-    // The total amount of issuance in the system, aka total amount of allocated water in the system
-    // which has yet to be spent
-	//fn total_unspent_waterbalance() -> T::Balance {
-	//	Self::fetch_balance()
-	//}
+	fn unlookup(a: Self::Target) -> Self::Source {
+		MultiAddress::Id(a)
+	}
 }
-
-
-//impl<T: Trait> AccountSet for Module<T> {
-//	type AccountId = T::AccountId;
-
-//	fn accounts() -> BTreeSet<T::AccountId> {
-//		Self::members().into_iter().collect::<BTreeSet<_>>()
-//	}
-//}
 
 impl<T: Trait> Module<T> {
 	fn update_apn(who: T::AccountId, basin_id: u32, super_apn: u32, agency_name: Vec<u8>, area: u32) -> DispatchResult {

@@ -16,6 +16,7 @@ std = [
 categories = [
 	"trait",
 	"water_balances",
+	"balancey",
 	"recipe",
 ]
 
