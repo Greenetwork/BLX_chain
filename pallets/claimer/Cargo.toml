@@ -1,7 +1,7 @@
 [package]
 name = "claimer"
-version = "2.0.0-rc4"
-authors = ["4meta5"]
+version = "3.0.0"
+authors = ["spencerbh"]
 edition = "2018"
 license = "GPL-3.0-or-later"
 
@@ -14,11 +14,8 @@ std = [
     'balances/std',
     'sp-runtime/std',
     'sp-std/std',
-    'water-balance/std',
-    # 'account-set/std',
-    # 'multiaddress/std'
+    # "primitivesv1/std",
 ]
-
 #cargo-features = ["resolver"]
 [package.metadata.substrate]
 categories = [
@@ -29,24 +26,27 @@ categories = [
 ]
 
 [dependencies]
-parity-scale-codec = { version = "1.3.0", features = ["derive"], default-features = false }
-frame-support = { version = '2.0.0-rc4', default-features = false }
-frame-system = { version = '2.0.0-rc4', default-features = false }
-sp-runtime = { version = '2.0.0-rc4', default-features = false }
-balances = { package = 'pallet-balances', version = '2.0.0-rc3', default-features = false }
-sp-std = { version = '2.0.0-rc4', default-features = false }
+parity-scale-codec = { version = "2.0.0", features = ['derive'], default-features = false }
+frame-support = { version = '3.0.0', default-features = false }
+frame-system = { version = '3.0.0', default-features = false }
+sp-runtime = { version = '3.0.0', default-features = false }
+balances = { package = 'pallet-balances', version = '3.0.0', default-features = false }
+sp-std = { version = '3.0.0', default-features = false }
 alt_serde = { version = "1", default-features = false, features = ["derive"] }
 # updated to `alt_serde_json` when latest version supporting feature `alloc` is released
-serde_json = { version = "1", default-features = false, git = "https://github.com/Xanewok/json", branch = "no-std", features = ["alloc"] }
-sp-core = { version = '2.0.0-rc4', default-features = false }
-sp-io = { version = '2.0.0-rc4', default-features = false }
-#geojson = { version = "0.18.0", default-features = false }
-water-balance = { path = '../../traits/water-balance', default-features = false }
-# account-set = { path = '../../traits/account-set', default-features = false }
-# multiaddress = { path = '../primitives2', default-features = false }
+# serde_json = { version = "1", default-features = false, git = "https://github.com/Xanewok/json", branch = "no-std", features = ["alloc"] }
+# serde = { package = "alt_serde", version = "1", default-features = false, features = ["derive"] }
+serde_json = { package = "alt_serde_json", version = "1", default-features = false, features = ["alloc"] }
+sp-core = { version = '3.0.0', default-features = false }
+sp-io = { version = '3.0.0', default-features = false }
+#geojson = { version = "0.18.0", default-features = false 
+#primitivesv1 = { path = '../primitivesv1', default-features = false }
+
 
 
 
 [dev-dependencies]
-sp-core = { version = '2.0.0-rc4', default-features = false }
-sp-io = { version = '2.0.0-rc4', default-features = false }
+sp-core = { version = '3.0.0', default-features = false }
+sp-io = { version = '3.0.0', default-features = false }
+#pallet-balances = { version = "3.0.0", default-features = false }
+
