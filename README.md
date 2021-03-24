@@ -24,7 +24,7 @@ A new FRAME-based Substrate node, ~~ready for hacking.~~ thats been hacked to pi
 
 *  Code needs to be fully commented!  
 
-*  All tests are for sure broken  
+*  All tests are for sure broken  _test_commit_
 
 *  Needs testing with multiple parties (Accounts), multiple apns (ApnTokens)
    *  will come after DB implementation
