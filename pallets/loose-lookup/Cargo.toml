@@ -1,0 +1,47 @@
+[package]
+name = "loose-lookup"
+version = "3.0.0"
+authors = ["spencerbh"]
+edition = "2018"
+license = "Apache-2.0"
+homepage = "https://substrate.dev"
+repository = "https://github.com/paritytech/substrate/"
+description = "loose coupling test for name-service (now inside of claimer)"
+readme = "README.md"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
+sp-std = { version = "3.0.0", default-features = false }
+sp-runtime = { version = "3.0.0", default-features = false }
+sp-core = { version = "3.0.0", default-features = false }
+frame-support = { version = "3.0.0", default-features = false }
+frame-system = { version = "3.0.0", default-features = false }
+# primitivesv1 = { path = '../primitivesv1', default-features = false }
+claimer = { path = '../claimer', default-features = false }
+
+# Benchmarking dependencies
+# frame-benchmarking = { version = "3.0.0", default-features = false, path = "../benchmarking", optional = true }
+
+[dev-dependencies]
+sp-io = { version = "3.0.0", default-features = false}
+pallet-balances = { version = "3.0.0", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+	"codec/std",
+	"sp-core/std",
+	"sp-std/std",
+	"frame-support/std",
+	"sp-runtime/std",
+	"frame-system/std",
+    # "primitivesv1/std",
+    "claimer/std",
+]
+# runtime-benchmarks = [
+# 	"frame-benchmarking",
+# 	"frame-support/runtime-benchmarks",
+# ]
