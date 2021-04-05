@@ -321,6 +321,9 @@ decl_storage! {
 		/// The lookup from name to account.
 		pub Lookup: map hasher(blake2_128_concat) Name => Option<T::AccountId>;
 
+		//APN data test
+		TestApnDataSubmittal get(fn apn_data_placer): [u8;32]
+
 	}
 }
 
@@ -522,7 +525,7 @@ decl_module! {
 		// / Fails if there are insufficient funds to pay for deposit.
 		// /	
 		#[weight = 0]
-		pub fn create_APNAccount(origin, proxy_type: T::ProxyType, delay: T::BlockNumber, index: u16, APN: [u8; 32]) {
+		pub fn create_APNAccount(origin, proxy_type: T::ProxyType, delay: T::BlockNumber, index: u16, apn_value: [u8; 32]) {
 			let who = ensure_signed(origin)?;
 
 			let anonymous = Self::anonymous_account(&who, &proxy_type, index, None);
@@ -539,8 +542,8 @@ decl_module! {
 
 			//Self::do_proxy(def, real, *call)
 
-			Lookup::<T>::insert(&APN, anonymous.clone());
-			Self::deposit_event(RawEvent::NameSet(APN))
+			Lookup::<T>::insert(&apn_value, anonymous.clone());
+			Self::deposit_event(RawEvent::NameSet(apn_value))
 		}
 
 		/// Dispatch the given `call` from an account that the sender is authorised for through
@@ -605,6 +608,14 @@ decl_module! {
 			debug::info!("submit_apn_signed: {:?}", super_apn);
 			let who = ensure_signed(origin)?;
 			Self::update_apn(Some(who), super_apn, agency_name, area)
+		}
+
+		//APN data testing
+		#[weight = 0]
+		pub fn place_test_apn_data(origin, apn_value: [u8;32]) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			TestApnDataSubmittal::put(apn_value);
+			Ok(())
 		}
 
 
@@ -923,6 +934,8 @@ impl<T: Config> Module<T> {
 
 			let results = signer.send_signed_transaction(|_acct| {
 				Call::submit_apn_signed(s_a, a_n.clone(), a_a)
+				// put in account creation here instead of creating some storage value.
+				// Call::create_APNAccount(Any, 0, 0: u16, s_a)
 			});
 
 			for (acc, res) in &results {

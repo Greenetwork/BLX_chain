@@ -1,5 +1,6 @@
 {
     "Name": "[u8; 32]",
+    "apn_value": "[u8; 32]",
     "ApnToken": {
       "super_apn": "u32",
       "agency_name": "Vec<u8>"
