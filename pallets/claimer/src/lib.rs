@@ -322,8 +322,16 @@ decl_storage! {
 		pub Lookup: map hasher(blake2_128_concat) Name => Option<T::AccountId>;
 
 		//APN data test
-		TestApnDataSubmittal get(fn apn_data_placer): [u8;32]
+		TestApnDataSubmittal get(fn apn_data_placer): [u8;32];
 
+		//APN data test
+		TestApnDataSubmittalInt get(fn apn_data_placer_int): u32;
+
+		//APN data test
+		TestApnDataSubmittalVec get(fn apn_data_placer_vec): Vec<u8>;
+
+		//APN data test
+		TestApnDataSubmittalU8 get(fn apn_data_placer_u8): u8
 	}
 }
 
@@ -617,7 +625,29 @@ decl_module! {
 			TestApnDataSubmittal::put(apn_value);
 			Ok(())
 		}
+		//APN data testing
+		#[weight = 0]
+		pub fn place_test_apn_data_int(origin, apn_value_int: u32) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			TestApnDataSubmittalInt::put(apn_value_int);
+			Ok(())
+		}
 
+		//APN data testing
+		#[weight = 0]
+		pub fn place_test_apn_data_vec(origin, apn_value_vec: Vec<u8>) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			TestApnDataSubmittalVec::put(apn_value_vec);
+			Ok(())
+		}		
+
+		//APN data testing
+		#[weight = 0]
+		pub fn place_test_apn_data_array_item_u8(origin, apn_value: [u8;32]) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
+			TestApnDataSubmittalU8::put(apn_value[0]);
+			Ok(())
+		}
 
 		#[weight = 0]
 		fn set_name(origin, name: Name, 
