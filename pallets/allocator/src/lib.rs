@@ -29,89 +29,89 @@ use sp_runtime::{
 
 use codec::{Encode, Decode, HasCompact};
 
-// pub use pallet_assets::WeightInfo;
+pub use pallet_assets::WeightInfo;
 
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+// pub type FrozenBalance<T> = <T as pallet_assets::Config>::FrozenBalance;
 
-pub type AssetIdOf<T> = <T as pallet_assets::Config>::AssetId;
-pub type AssetBalanceOf<T> = <T as pallet_assets::Config>::Balance;
+// pub type AssetIdOf<T> = <T as pallet_assets::Config>::AssetId;
+// pub type AssetBalanceOf<T> = <T as pallet_assets::Config>::Balance;
 
 
-pub trait Config: frame_system::Config + pallet_assets::Config { 
-	type Event: From<Event<Self>> + Into<<Self as system::Config>::Event>;
+pub trait Config: frame_system::Config { 
+		/// The overarching event type.
+		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-	// /// The units in which we record balances.
-	type BalanceA: Get<AssetBalanceOf<Self>>;
+		/// The units in which we record balances.
+		type Balance: Member + Parameter + AtLeast32BitUnsigned + Default + Copy;
 
-	type IdA: Get<AssetIdOf<Self>>;
+		/// The arithmetic type of asset identifier.
+		type AssetId: Member + Parameter + Default + Copy + HasCompact;
 
-	// /// The arithmetic type of asset identifier.
-	// type AssetId: Member + Parameter + Default + Copy + HasCompact;
+		/// The currency mechanism.
+		type Currency: ReservableCurrency<Self::AccountId>;
 
-	// /// The currency mechanism.
-	type Currency: ReservableCurrency<Self::AccountId>;
+		/// The origin which may forcibly create or destroy an asset.
+		type ForceOrigin: EnsureOrigin<Self::Origin>;
 
-	// /// The origin which may forcibly create or destroy an asset.
-	// type ForceOrigin: EnsureOrigin<Self::Origin>;
+		/// The basic amount of funds that must be reserved when creating a new asset class.
+		type AssetDepositBase: Get<BalanceOf<Self>>;
 
-	// /// The basic amount of funds that must be reserved when creating a new asset class.
-	// type AssetDepositBase: Get<BalanceOf<Self>>;
+		/// The additional funds that must be reserved for every zombie account that an asset class
+		/// supports.
+		type AssetDepositPerZombie: Get<BalanceOf<Self>>;
 
-	// /// The additional funds that must be reserved for every zombie account that an asset class
-	// /// supports.
-	// type AssetDepositPerZombie: Get<BalanceOf<Self>>;
+		/// The maximum length of a name or symbol stored on-chain.
+		type StringLimit: Get<u32>;
 
-	// /// The maximum length of a name or symbol stored on-chain.
-	// type StringLimit: Get<u32>;
+		/// The basic amount of funds that must be reserved when adding metadata to your asset.
+		type MetadataDepositBase: Get<BalanceOf<Self>>;
 
-	// /// The basic amount of funds that must be reserved when adding metadata to your asset.
-	// type MetadataDepositBase: Get<BalanceOf<Self>>;
+		/// The additional funds that must be reserved for the number of bytes you store in your
+		/// metadata.
+		type MetadataDepositPerByte: Get<BalanceOf<Self>>;
 
-	// /// The additional funds that must be reserved for the number of bytes you store in your
-	// /// metadata.
-	// type MetadataDepositPerByte: Get<BalanceOf<Self>>;
-
-	// /// Weight information for extrinsics in this pallet.
-	// type WeightInfo: WeightInfo;
+		/// Weight information for extrinsics in this pallet.
+		type WeightInfo: WeightInfo;
 }
 
 decl_storage! {
 	trait Store for Module<T: Config> as Asset {
 		/// Next available ID for user-created asset.
-		pub NextAssetId get(fn next_asset_id) : AssetIdOf<T>;
+		pub NextAssetId get(fn next_asset_id) : T::AssetId;
 
 		pub Balances:
-			double_map hasher(twox_64_concat) AssetIdOf<T>, hasher(blake2_128_concat) T::AccountId => AssetBalanceOf<T>;
+			double_map hasher(twox_64_concat) T::AssetId, hasher(blake2_128_concat) T::AccountId => T::Balance;
 
 		pub TotalSupply:
-			map hasher(blake2_128_concat) AssetIdOf<T> => AssetBalanceOf<T>;
+			map hasher(blake2_128_concat) T::AssetId => T::Balance;
 	}
 }
 
 decl_event!(
 	pub enum Event<T> where
 		<T as frame_system::Config>::AccountId,
-		<T as Config>::BalanceA,
-		<T as Config>::IdA,
+		<T as Config>::Balance,
+		<T as Config>::AssetId,
 		// AssetOptions = AssetOptions<<T as Config>::Balance, <T as frame_system::Config>::AccountId>
 	{
 		/// Asset created. [asset_id, creator, asset_options]
 		// Created(AssetId, AccountId, AssetOptions),
 		/// Asset transfer succeeded. [asset_id, from, to, amount]
-		Transferred(IdA, AccountId, AccountId, BalanceA),
+		Transferred(AssetId, AccountId, AccountId, Balance),
 		/// Asset permission updated. [asset_id, new_permissions]
 		// PermissionUpdated(AssetId, PermissionLatest<AccountId>),
 		/// New asset minted. [asset_id, account, amount]
-		Minted(IdA, AccountId, BalanceA),
+		Minted(AssetId, AccountId, Balance),
 		/// Asset burned. [asset_id, account, amount]
-		Burned(IdA, AccountId, BalanceA),
+		Burned(AssetId, AccountId, Balance),
 	}
 );
 
 decl_module! {
 	pub struct Module<T: Config> for enum Call where origin: T::Origin {
 		#[weight = 10_000]
-		pub fn issue_token_airdrop(origin, TOKENS_FIXED_SUPPLY: AssetBalanceOf<T>) -> DispatchResult {
+		pub fn issue_token_airdrop(origin, TOKENS_FIXED_SUPPLY: T::Balance) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			const ACCOUNT_ALICE: u64 = 1;
