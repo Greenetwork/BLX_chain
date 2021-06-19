@@ -110,14 +110,14 @@ decl_event!(
 
 decl_module! {
 	pub struct Module<T: Config> for enum Call where origin: T::Origin {
-		#[weight = 10_000]
-		pub fn issue_token_airdrop(origin, TOKENS_FIXED_SUPPLY: T::Balance) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
+		#[weight = 0]
+		pub fn issue_token_airdrop(origin, Atokens: T::Balance) -> DispatchResult {
+			let _ = ensure_signed(origin)?;
 
-			const ACCOUNT_ALICE: u64 = 1;
-			const ACCOUNT_BOB: u64 = 2;
-			const COUNT_AIRDROP_RECIPIENTS: u64 = 2;
-			// const TOKENS_FIXED_SUPPLY: T::BalanceA = 100;
+			// const ACCOUNT_ALICE: u64 = 1;
+			// const ACCOUNT_BOB: u64 = 2;
+			// const COUNT_AIRDROP_RECIPIENTS: u64 = 2;
+			// const TOKENS_FIXED_SUPPLY: T::Balance = 100;
 
 			// ensure!(!COUNT_AIRDROP_RECIPIENTS.is_zero(), ArithmeticError::DivisionByZero);
 
@@ -126,7 +126,7 @@ decl_module! {
 			// <NextAssetId<T>>::mutate(|asset_id| *asset_id += 1);
 			// <Balances<T>>::insert(asset_id, &ACCOUNT_ALICE, TOKENS_FIXED_SUPPLY / COUNT_AIRDROP_RECIPIENTS);
 			// <Balances<T>>::insert(asset_id, &ACCOUNT_BOB, TOKENS_FIXED_SUPPLY / COUNT_AIRDROP_RECIPIENTS);
-			<TotalSupply<T>>::insert(asset_id, TOKENS_FIXED_SUPPLY);
+			<TotalSupply<T>>::insert(asset_id, &Atokens);
 
 			// Self::deposit_event(RawEvent::Issued(asset_id, sender, TOKENS_FIXED_SUPPLY));
 			Ok(())
