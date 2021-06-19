@@ -358,6 +358,38 @@ impl loose_lookup::Config for Runtime {
 	type AccountIndex = AccountIndex;
 	type Currency = Balances;
 }
+
+impl allocator::Config for Runtime {
+	type Event = Event;
+	// /// The units in which we record balances.
+	type BalanceA = u64;
+
+	type IdA = u32;
+
+	// /// The arithmetic type of asset identifier.
+	// type AssetId: Member + Parameter + Default + Copy + HasCompact;
+
+	// /// The currency mechanism.
+	type Currency = Balances;
+}
+
+impl pallet_assets::Config for Runtime {
+	type Event = Event;
+	type Balance = u64;
+	type AssetId = u32;
+	type Currency = Balances;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type AssetDeposit = AssetDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type ApprovalDeposit = ApprovalDeposit;
+	type StringLimit = StringLimit;
+	type Freezer = ();
+	type Extra = ();
+	type WeightInfo = (); //pallet_assets::weights::SubstrateWeight<Runtime>;
+}
+
+
 // impl pallet_proxy::Config for Runtime {
 // 	type Event = Event;
 // 	type Call = Call;
@@ -458,6 +490,8 @@ construct_runtime!(
 		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
 		Claimer: claimer::{Module, Call, Storage, Event<T>},
 		LooseLookup: loose_lookup::{Module, Call, Storage},
+		Allocator: allocator::{Module, Call, Storage, Event<T>},
+		Assets: pallet_assets::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
