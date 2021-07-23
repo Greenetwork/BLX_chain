@@ -1,20 +1,17 @@
 {
-  "Address": "AccountId",
-  "U16F16": "[u8; 4]",
-  "GroupIndex": "u32",
-  "basin_id": "u32",
-  "ApnToken": {
-    "super_apn": "u32",
-    "agency_name": "Vec<u8>",
-    "area": "u32"
-  },
-  "numbers": "Vec<u64>",
-  "user_agent_on_chain": "Vec<u8>",
-  "TaskQueue": {
-    "http_remote_reqst": "Vec<u8>",
-    "http_header_usr": "Vec<u8>"
-  },
-    "TaskQueueTwo": {
-    "apn": "u32"
+    "Name": "[u8; 32]",
+    "apn_value": "[u8; 32]",
+    "ApnToken": {
+      "super_apn": "u32",
+      "agency_name": "Vec<u8>"
+    },
+    "Source": {
+      "_enum": {
+        "Id": "AccountId",
+        "Index": "AccountIndex",
+        "Raw": "Vec<u8>",
+        "Address32": "[u8;32]",
+        "Address20": "[u8;20]"
+      }
+    }
   }
-}
