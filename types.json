@@ -1,5 +1,7 @@
 {
     "Name": "[u8; 32]",
+    "AccountInfo": "AccountInfoWithDualRefCount",
+    "Balance1": "u64",
     "apn_value": "[u8; 32]",
     "ApnToken": {
       "super_apn": "u32",

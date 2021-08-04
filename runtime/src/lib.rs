@@ -372,7 +372,7 @@ parameter_types! {
 
 impl allocator::Config for Runtime {
 	type Event = Event;
-	type Balance = u64;
+	type Balance1 = u64;
 	type AssetId = u32;
 	type Currency = Balances;
 	type ForceOrigin = frame_system::EnsureRoot<AccountId>;

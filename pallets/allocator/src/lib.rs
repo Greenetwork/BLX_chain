@@ -30,6 +30,8 @@ use sp_runtime::{
 use codec::{Encode, Decode, HasCompact};
 
 pub use pallet_assets::WeightInfo;
+use sp_runtime::MultiAddress; // might be needed idk
+// use claimer::StaticLookup; // idk need to get this straightend out if the StaticLookup type in the claimer pallet is even necessary anymore
 
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 // pub type FrozenBalance<T> = <T as pallet_assets::Config>::FrozenBalance;
@@ -43,7 +45,7 @@ pub trait Config: frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// The units in which we record balances.
-		type Balance: Member + Parameter + AtLeast32BitUnsigned + Default + Copy;
+		type Balance1: Member + Parameter + AtLeast32BitUnsigned + Default + Copy;
 
 		/// The arithmetic type of asset identifier.
 		type AssetId: Member + Parameter + Default + Copy + HasCompact;
@@ -73,6 +75,10 @@ pub trait Config: frame_system::Config {
 
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
+
+		// Might be needed idk, will need to be added to runtime/src/lib.rs
+		// type AccountIndex: frame_support::Parameter + sp_runtime::traits::Member + codec::Codec + Default + sp_runtime::traits::AtLeast32Bit + Copy;
+		// type Lookie: StaticLookup <Target = Self::AccountId> + StaticLookup <Source = MultiAddress<Self::AccountId, Self::AccountIndex>> ;  
 }
 
 decl_storage! {
@@ -81,10 +87,10 @@ decl_storage! {
 		pub NextAssetId get(fn next_asset_id) : T::AssetId;
 
 		pub Balances:
-			double_map hasher(twox_64_concat) T::AssetId, hasher(blake2_128_concat) T::AccountId => T::Balance;
+			double_map hasher(twox_64_concat) T::AssetId, hasher(blake2_128_concat) T::AccountId => T::Balance1;
 
 		pub TotalSupply:
-			map hasher(blake2_128_concat) T::AssetId => T::Balance;
+			map hasher(blake2_128_concat) T::AssetId => T::Balance1;
 
 		QueueAvailable get(fn queue_available): bool;
 	}
@@ -93,20 +99,20 @@ decl_storage! {
 decl_event!(
 	pub enum Event<T> where
 		<T as frame_system::Config>::AccountId,
-		<T as Config>::Balance,
+		<T as Config>::Balance1,
 		<T as Config>::AssetId,
 		// AssetOptions = AssetOptions<<T as Config>::Balance, <T as frame_system::Config>::AccountId>
 	{
 		/// Asset created. [asset_id, creator, asset_options]
 		// Created(AssetId, AccountId, AssetOptions),
 		/// Asset transfer succeeded. [asset_id, from, to, amount]
-		Transferred(AssetId, AccountId, AccountId, Balance),
+		Transferred(AssetId, AccountId, AccountId, Balance1),
 		/// Asset permission updated. [asset_id, new_permissions]
 		// PermissionUpdated(AssetId, PermissionLatest<AccountId>),
 		/// New asset minted. [asset_id, account, amount]
-		Minted(AssetId, AccountId, Balance),
+		Minted(AssetId, AccountId, Balance1),
 		/// Asset burned. [asset_id, account, amount]
-		Burned(AssetId, AccountId, Balance),
+		Burned(AssetId, AccountId, Balance1),
 	}
 );
 
@@ -123,25 +129,41 @@ decl_module! {
 		}
 
 		#[weight = 0]
-		pub fn issue_token_airdrop(origin, atokens: T::Balance) -> DispatchResult {
-			let _ = ensure_signed(origin)?;
+		pub fn issue_token_airdrop(origin, apn: T::AccountId, atokens: T::Balance1) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
 
-			// const ACCOUNT_ALICE: u64 = 1;
-			// const ACCOUNT_BOB: u64 = 2;
-			// const COUNT_AIRDROP_RECIPIENTS: u64 = 2;
+			const ACCOUNT_ALICE: u64 = 1;
+			const ACCOUNT_BOB: u64 = 2;
+			const COUNT_AIRDROP_RECIPIENTS: u64 = 2;
 			
+			// let TOKENS_FIXED_SUPPLY = &atokens;
+			const TOKENS_FIXED_SUPPLY: u64 = 100;
 
 			// ensure!(!COUNT_AIRDROP_RECIPIENTS.is_zero(), ArithmeticError::DivisionByZero);
 
 			let asset_id = Self::next_asset_id();
 
+
+
+			// for (acc) in 
+
 			// <NextAssetId<T>>::mutate(|asset_id| *asset_id += 1);
-			// <Balances<T>>::insert(asset_id, &ACCOUNT_ALICE, TOKENS_FIXED_SUPPLY / COUNT_AIRDROP_RECIPIENTS);
+			<Balances<T>>::insert(asset_id, &apn, &atokens);
 			// <Balances<T>>::insert(asset_id, &ACCOUNT_BOB, TOKENS_FIXED_SUPPLY / COUNT_AIRDROP_RECIPIENTS);
-			// <TotalSupply<T>>::insert(asset_id, &atokens);
+			<TotalSupply<T>>::insert(asset_id, &atokens);
 
 			// Self::deposit_event(RawEvent::Issued(asset_id, sender, TOKENS_FIXED_SUPPLY));
 			Ok(())
 		}
+
+
+
+
+
+
 	}
 }
+
+// impl<T:Config> Module<T> for {
+
+// }
