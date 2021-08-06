@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 // use pallet_assets as assets;
+
 use frame_support::{
 	//codec::{Decode, Encode}, // used for on-chain storage
 	decl_event, decl_module, decl_storage, debug, decl_error, // used for all of the different macros
@@ -13,6 +14,7 @@ use frame_support::{
 		ReservableCurrency, Currency, InstanceFilter, OriginTrait, IsType, 
 		EnsureOrigin, OnUnbalanced, WithdrawReasons, ExistenceRequirement::KeepAlive, Imbalance,
 		//IsSubType, //cant find this?
+		Vec,
 	},
 	Parameter,
 	weights::{Weight, GetDispatchInfo},
@@ -23,7 +25,7 @@ use frame_system::{
 use sp_runtime::{
 	RuntimeDebug,
 	traits::{
-		AtLeast32BitUnsigned, Zero, StaticLookup, Saturating, CheckedSub, CheckedAdd, Member,
+		AtLeast32BitUnsigned, Zero, StaticLookup, Saturating, CheckedSub, CheckedAdd, Member, CheckedMul,
 	}
 };
 
@@ -128,29 +130,40 @@ decl_module! {
 			Ok(())
 		}
 
+		// should be able to query all of the proxy accounts created for APN's by claimer pallet and then pass them to issue_token_airdrop
+		// pub fn allocate(origin, acft: T::Balance1) -> DispatchResult {
+		// 	let _sender = ensure_signed(origin)?;
+
+
+		// }
+
 		#[weight = 0]
-		pub fn issue_token_airdrop(origin, apn: T::AccountId, atokens: T::Balance1) -> DispatchResult {
+		pub fn issue_token_airdrop(origin, apn: Vec<T::AccountId>, atokens: T::Balance1) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
-			const ACCOUNT_ALICE: u64 = 1;
-			const ACCOUNT_BOB: u64 = 2;
-			const COUNT_AIRDROP_RECIPIENTS: u64 = 2;
+			// const ACCOUNT_ALICE: u64 = 1;
+			// const ACCOUNT_BOB: u64 = 2;
+			// const COUNT_AIRDROP_RECIPIENTS: u64 = 2;
 			
 			// let TOKENS_FIXED_SUPPLY = &atokens;
-			const TOKENS_FIXED_SUPPLY: u64 = 100;
+			// const TOKENS_FIXED_SUPPLY: u64 = 100;
 
 			// ensure!(!COUNT_AIRDROP_RECIPIENTS.is_zero(), ArithmeticError::DivisionByZero);
 
 			let asset_id = Self::next_asset_id();
 
+			for i in 0..apn.len() {
+				<Balances<T>>::insert(asset_id, &apn[i], &atokens);
+			}
 
-
+	
 			// for (acc) in 
+			// let targets = apn.len();
 
 			// <NextAssetId<T>>::mutate(|asset_id| *asset_id += 1);
-			<Balances<T>>::insert(asset_id, &apn, &atokens);
+			// <Balances<T>>::insert(asset_id, &apn, &atokens);
 			// <Balances<T>>::insert(asset_id, &ACCOUNT_BOB, TOKENS_FIXED_SUPPLY / COUNT_AIRDROP_RECIPIENTS);
-			<TotalSupply<T>>::insert(asset_id, &atokens);
+			// <TotalSupply<T>>::insert(asset_id, &atokens.checked_mul(targets); // spend time here figuring out how to multiply # of apn accounts by assets
 
 			// Self::deposit_event(RawEvent::Issued(asset_id, sender, TOKENS_FIXED_SUPPLY));
 			Ok(())

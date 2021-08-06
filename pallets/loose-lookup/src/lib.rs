@@ -71,8 +71,12 @@ decl_module! {
 			//assert_eq!(T::Lookie::lookup, Some(account));
 
 
-			match target_from_name {
-				target_from_account => <SimpleMap<T>>::insert(&target_from_account,5588)
+			// match target_from_name {
+			// 	target_from_account => <SimpleMap<T>>::insert(&target_from_account,5588)
+			// }
+
+			if target_from_name == target_from_account {
+				<SimpleMap<T>>::insert(&target_from_account,5588)
 			}
 
 			// Self::deposit_event(RawEvent::IstheDude(caller));
