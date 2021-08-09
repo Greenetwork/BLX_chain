@@ -331,7 +331,10 @@ decl_storage! {
 		TestApnDataSubmittalVec get(fn apn_data_placer_vec): Vec<u8>;
 
 		//APN data test
-		TestApnDataSubmittalU8 get(fn apn_data_placer_u8): u8
+		TestApnDataSubmittalU8 get(fn apn_data_placer_u8): u8;
+
+		// Vec of APNs that have been registered
+		pub RegisteredAPNs get(fn registered_apns): Vec<Name>; 
 	}
 }
 
@@ -428,6 +431,7 @@ decl_error! {
 		/// Ownership extensions are not available.
 		NoExtensions,
 		Lalala,
+		AlreadyRegistered,
 	}
 }
 
@@ -551,6 +555,17 @@ decl_module! {
 			//Self::do_proxy(def, real, *call)
 
 			Lookup::<T>::insert(&apn_value, anonymous.clone());
+
+			let mut apns = RegisteredAPNs::get();
+
+			match apns.binary_search(&apn_value) {
+				Ok(_) => Err(Error::<T>::AlreadyRegistered),
+				Err(index) => {
+					apns.insert(index, apn_value.clone());
+					RegisteredAPNs::put(apns);
+					Ok(())
+				},
+			};
 			Self::deposit_event(RawEvent::NameSet(apn_value))
 		}
 
@@ -1049,3 +1064,5 @@ where
 		MultiAddress::Id(a)
 	}
 }
+
+
