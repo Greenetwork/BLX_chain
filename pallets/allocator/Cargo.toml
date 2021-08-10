@@ -23,7 +23,7 @@ frame-support = { default-features = false, version = '3.0.0' }
 frame-system = { default-features = false, version = '3.0.0' }
 pallet-assets = { default-features = false, version = '3.0.0' }
 sp-runtime = { version = '3.0.0', default-features = false }
-# claimer = { path = '../claimer', default-features = false }
+claimer = { path = '../claimer', default-features = false }
 
 
 [dev-dependencies]
@@ -40,5 +40,5 @@ std = [
     'frame-system/std',
     'pallet-assets/std',
     'sp-runtime/std',
-    # "claimer/std",
+    'claimer/std',
 ]

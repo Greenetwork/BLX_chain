@@ -38,7 +38,7 @@ use frame_system::{
 	},
 };
 pub use sp_runtime::{RuntimeDebug, traits::{Dispatchable, Zero, Hash, Member, Saturating, LookupError, StaticLookup}};
-use sp_std::prelude::*; // imports a bunch of boiler plate
+use sp_std::collections::btree_set::BTreeSet;
 
 use sp_std::str; // string
 
@@ -113,7 +113,12 @@ type NegativeImbalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_s
 pub trait WeightInfo {}
 impl WeightInfo for () {}
 /////////////////////////////////////////////////////////////////////////////////// //////////////
- 
+
+pub trait ApnSet {
+	type Name;
+
+	fn apnsset() -> BTreeSet<Self::Name>;
+}
  
 /// This is the pallet's configuration trait
 pub trait Config: balances::Config + system::Config + CreateSignedTransaction<Call<Self>> {
@@ -1065,4 +1070,22 @@ where
 	}
 }
 
+
+// pub trait ApnSet {
+// 	type Name;
+
+// 	fn apnsset() -> BTreeSet<Self::Name>;
+// }
+ 
+impl<T: Config> ApnSet for Module<T>
+where // might be useful?
+	MultiAddress<T::AccountId, T::AccountIndex>: Codec,  {
+	// type Name = T::Name;
+	type Name = [u8; 32];
+
+	fn apnsset() -> BTreeSet<Self::Name> {
+		Self::registered_apns().into_iter().collect::<BTreeSet<_>>()
+		
+	}
+}
 

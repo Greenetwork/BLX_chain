@@ -31,6 +31,8 @@ use sp_runtime::{
 
 use codec::{Encode, Decode, HasCompact};
 
+use claimer::ApnSet;
+
 pub use pallet_assets::WeightInfo;
 use sp_runtime::MultiAddress; // might be needed idk
 // use claimer::StaticLookup; // idk need to get this straightend out if the StaticLookup type in the claimer pallet is even necessary anymore
@@ -81,6 +83,10 @@ pub trait Config: frame_system::Config {
 		// Might be needed idk, will need to be added to runtime/src/lib.rs
 		// type AccountIndex: frame_support::Parameter + sp_runtime::traits::Member + codec::Codec + Default + sp_runtime::traits::AtLeast32Bit + Copy;
 		// type Lookie: StaticLookup <Target = Self::AccountId> + StaticLookup <Source = MultiAddress<Self::AccountId, Self::AccountIndex>> ;  
+
+		type Name: ApnSet <Name = [u8; 32]>;
+		type Lookie: StaticLookup <Target = Self::AccountId>;  
+
 }
 
 decl_storage! {
@@ -118,6 +124,12 @@ decl_event!(
 	}
 );
 
+decl_error! (
+	pub enum Error for Module<T: Config> {
+		/// The caller is not a member
+		somerror,
+	}
+);
 
 
 decl_module! {
@@ -137,6 +149,18 @@ decl_module! {
 
 		// }
 
+		// #[weight = 0]
+		// fn check_apn(origin) -> Result<Vec<<T::Name as ApnSet>::Name>, Error<T>> {
+		// 	let popper = T::Name::apnsset().iter().cloned().collect();
+		// 	Ok(popper)
+		// }
+
+		// #[weight = 0]
+		// fn check_apn(origin) -> Vec<<T::Name as ApnSet>::Name> {
+		// 	let popper = T::Name::apnsset().iter().cloned().collect();
+		// 	popper
+		// }
+
 		#[weight = 0]
 		pub fn issue_token_airdrop(origin, apn: Vec<T::AccountId>, atokens: T::Balance1) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
@@ -150,11 +174,35 @@ decl_module! {
 
 			// ensure!(!COUNT_AIRDROP_RECIPIENTS.is_zero(), ArithmeticError::DivisionByZero);
 
+			// let popper: Vec<<T::Name as ApnSet>::Name> = T::Name::apnsset().iter().cloned().collect();
+
+			let friendly_names: Vec<<T::Name as ApnSet>::Name> = T::Name::apnsset().iter().cloned().collect();
+
 			let asset_id = Self::next_asset_id();
 
-			for i in 0..apn.len() {
-				<Balances<T>>::insert(asset_id, &apn[i], &atokens);
+			for i in 0..friendly_names.len() {
+				<Balances<T>>::insert(asset_id, T::Lookup::unlookup(friendly_names[i].into()), &atokens);
 			}
+
+
+		// #[weight = 0]
+		// pub fn issue_token_airdrop(origin, apn: Vec<T::AccountId>, atokens: T::Balance1) -> DispatchResult {
+		// 	let sender = ensure_signed(origin)?;
+
+		// 	// const ACCOUNT_ALICE: u64 = 1;
+		// 	// const ACCOUNT_BOB: u64 = 2;
+		// 	// const COUNT_AIRDROP_RECIPIENTS: u64 = 2;
+			
+		// 	// let TOKENS_FIXED_SUPPLY = &atokens;
+		// 	// const TOKENS_FIXED_SUPPLY: u64 = 100;
+
+		// 	// ensure!(!COUNT_AIRDROP_RECIPIENTS.is_zero(), ArithmeticError::DivisionByZero);
+
+		// 	let asset_id = Self::next_asset_id();
+
+		// 	for i in 0..apn.len() {
+		// 		<Balances<T>>::insert(asset_id, &apn[i], &atokens);
+		// 	}
 
 	
 			// for (acc) in 
@@ -168,12 +216,6 @@ decl_module! {
 			// Self::deposit_event(RawEvent::Issued(asset_id, sender, TOKENS_FIXED_SUPPLY));
 			Ok(())
 		}
-
-
-
-
-
-
 	}
 }
 
