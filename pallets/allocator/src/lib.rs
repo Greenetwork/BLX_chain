@@ -188,7 +188,7 @@ decl_module! {
 			for i in 0..friendly_names.len() {
 				let apn_name = friendly_names[i];
 				match apn_name.into() {
-					MultiAddress::Address32(hash) => {
+					MultiAddress::<T::AccountId, T::Index>::Address32(hash) => {
 						// Lookup::<T>::get(hash).ok_or(LookupError)
 						// T::Lookup::lookup(apn_name.into())
 						// let lookup_apn = 
@@ -196,11 +196,11 @@ decl_module! {
 
 
 						
-						<Balances<T>>::insert(asset_id, AccountIdLookup::lookup(MultiAddress::Address32(hash)), &atokens);
+						<Balances<T>>::insert(asset_id, AccountIdLookup::lookup(MultiAddress::Address32(hash)).into(), &atokens);
 						// <Balances<T>>::insert(asset_id, MultiAddress::Address32(hash), &atokens);
 
 					},
-					_ => Err(LookupError),
+					_ => (),
 				}
 				// let target_from_apn = T::Lookup::lookup(apn_name.into());
 				// <Balances<T>>::insert(asset_id, target_from_apn, &atokens);
