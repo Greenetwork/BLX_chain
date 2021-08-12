@@ -6,7 +6,8 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-use codec::{Encode, Decode};
+use claimer::ApnSet;
+use codec::{Encode, Decode, EncodeLike};
 use sp_std::prelude::*;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
@@ -44,6 +45,8 @@ pub use frame_support::{
 use pallet_transaction_payment::CurrencyAdapter;
 
 pub use claimer;
+
+pub use allocator;
 
 /// Import the template pallet.
 pub use pallet_template;
@@ -360,7 +363,6 @@ impl loose_lookup::Config for Runtime {
 }
 
 
-
 parameter_types! {
 	pub const AssetDepositBase: u64 = 1;
 	pub const ApprovalDeposit: u64 = 1;
@@ -369,6 +371,7 @@ parameter_types! {
 	pub const MetadataDepositPerByte: u64 = 1;
 	pub const AssetDepositPerZombie: u64 = 1;
 }
+
 
 impl allocator::Config for Runtime {
 	type Event = Event;
@@ -382,48 +385,9 @@ impl allocator::Config for Runtime {
 	type MetadataDepositBase = MetadataDepositBase;
 	type MetadataDepositPerByte = MetadataDepositPerByte;
 	type WeightInfo = ();
+	type Name = allocator::Module<Name>;
+	type Lookie = Claimer;
 }
-
-// impl pallet_assets::Config for Runtime {
-// 	type Event = Event;
-// 	type Balance = u64;
-// 	type AssetId = u32;
-// 	type Currency = Balances;
-	// type ForceOrigin = EnsureRoot<AccountId>;
-	// type AssetDeposit = AssetDeposit;
-	// type MetadataDepositBase = MetadataDepositBase;
-	// type MetadataDepositPerByte = MetadataDepositPerByte;
-	// type ApprovalDeposit = ApprovalDeposit;
-	// type StringLimit = StringLimit;
-	// type Freezer = ();
-	// type Extra = ();
-	// type WeightInfo = (); //pallet_assets::weights::SubstrateWeight<Runtime>;
-// }
-
-
-// impl pallet_proxy::Config for Runtime {
-// 	type Event = Event;
-// 	type Call = Call;
-// 	type Currency = Balances;
-// 	type ProxyType = ProxyType;
-// 	type ProxyDepositBase = ProxyDepositBase;
-// 	type ProxyDepositFactor = ProxyDepositFactor;
-// 	type MaxProxies = MaxProxies;
-// 	type WeightInfo = ();
-// 	type MaxPending = MaxPending;
-// 	type CallHasher = BlakeTwo256;
-// 	type AnnouncementDepositBase = AnnouncementDepositBase;
-// 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
-// }
-
-
-// impl pallet_utility::Config for Runtime {
-// 	type Event = Event;
-// 	type Call = Call;
-// 	type WeightInfo = ();
-// }
-
-
 
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime

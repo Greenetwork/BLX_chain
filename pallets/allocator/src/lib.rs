@@ -187,21 +187,27 @@ decl_module! {
 
 			for i in 0..friendly_names.len() {
 				let apn_name = friendly_names[i];
-				match apn_name.into() {
-					MultiAddress::<T::AccountId, T::Index>::Address32(hash) => {
-						// Lookup::<T>::get(hash).ok_or(LookupError)
-						// T::Lookup::lookup(apn_name.into())
-						// let lookup_apn = 
-						// let lookup_apn = T::Lookie::lookup(hash.);
+
+				let acc= AccountIdLookup::<T::AccountId, T::Index>::lookup(MultiAddress::Address32(apn_name))?;
+				<Balances<T>>::insert(asset_id, acc, &atokens);
+
+				// <Balances<T>>::insert(asset_id, AccountIdLookup::lookup(MultiAddress::Address32(apn_name)).into(), &atokens);
+
+				// match apn_name.into() {
+				// 	MultiAddress::<T::AccountId, T::Index>::Address32(hash) => {
+				// 		// Lookup::<T>::get(hash).ok_or(LookupError)
+				// 		// T::Lookup::lookup(apn_name.into())
+				// 		// let lookup_apn = 
+				// 		// let lookup_apn = T::Lookie::lookup(hash.);
 
 
 						
-						<Balances<T>>::insert(asset_id, AccountIdLookup::lookup(MultiAddress::Address32(hash)).into(), &atokens);
-						// <Balances<T>>::insert(asset_id, MultiAddress::Address32(hash), &atokens);
+				// 		<Balances<T>>::insert(asset_id, AccountIdLookup::lookup(MultiAddress::Address32(hash)).into(), &atokens);
+				// 		// <Balances<T>>::insert(asset_id, MultiAddress::Address32(hash), &atokens);
 
-					},
-					_ => (),
-				}
+				// 	},
+				// 	_ => (),
+				// }
 				// let target_from_apn = T::Lookup::lookup(apn_name.into());
 				// <Balances<T>>::insert(asset_id, target_from_apn, &atokens);
 			}
