@@ -25,18 +25,18 @@ use frame_system::{
 use sp_runtime::{
 	RuntimeDebug,
 	traits::{
-		AtLeast32BitUnsigned, Zero, StaticLookup, Saturating, CheckedSub, CheckedAdd, Member, CheckedMul,
+		AtLeast32BitUnsigned, Zero, StaticLookup, Saturating, CheckedSub, CheckedAdd, Member, CheckedMul, AccountIdLookup,
 	}
 };
 
-use codec::{Encode, Decode, HasCompact};
+use codec::{Encode, Decode, EncodeLike, HasCompact};
 
-use claimer::ApnSet;
+use claimer::{ApnSet, LookupError};
 
 pub use pallet_assets::WeightInfo;
 use sp_runtime::MultiAddress; // might be needed idk
 // use claimer::StaticLookup; // idk need to get this straightend out if the StaticLookup type in the claimer pallet is even necessary anymore
-
+use sp_runtime::traits::Lookup;
 pub type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 // pub type FrozenBalance<T> = <T as pallet_assets::Config>::FrozenBalance;
 
@@ -84,7 +84,7 @@ pub trait Config: frame_system::Config {
 		// type AccountIndex: frame_support::Parameter + sp_runtime::traits::Member + codec::Codec + Default + sp_runtime::traits::AtLeast32Bit + Copy;
 		// type Lookie: StaticLookup <Target = Self::AccountId> + StaticLookup <Source = MultiAddress<Self::AccountId, Self::AccountIndex>> ;  
 
-		type Name: ApnSet <Name = [u8; 32]>;
+		type Name: ApnSet <Name = [u8; 32]> + EncodeLike<<Self as frame_system::Config>::AccountId>;
 		type Lookie: StaticLookup <Target = Self::AccountId>;  
 
 }
@@ -103,6 +103,7 @@ decl_storage! {
 		QueueAvailable get(fn queue_available): bool;
 	}
 }
+
 
 decl_event!(
 	pub enum Event<T> where
@@ -162,7 +163,11 @@ decl_module! {
 		// }
 
 		#[weight = 0]
-		pub fn issue_token_airdrop(origin, apn: Vec<T::AccountId>, atokens: T::Balance1) -> DispatchResult {
+		pub fn issue_token_airdrop(
+			origin, 
+			// apn: Vec<T::AccountId>, 
+			atokens: T::Balance1
+		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			// const ACCOUNT_ALICE: u64 = 1;
@@ -181,7 +186,24 @@ decl_module! {
 			let asset_id = Self::next_asset_id();
 
 			for i in 0..friendly_names.len() {
-				<Balances<T>>::insert(asset_id, T::Lookup::unlookup(friendly_names[i].into()), &atokens);
+				let apn_name = friendly_names[i];
+				match apn_name.into() {
+					MultiAddress::Address32(hash) => {
+						// Lookup::<T>::get(hash).ok_or(LookupError)
+						// T::Lookup::lookup(apn_name.into())
+						// let lookup_apn = 
+						// let lookup_apn = T::Lookie::lookup(hash.);
+
+
+						
+						<Balances<T>>::insert(asset_id, AccountIdLookup::lookup(MultiAddress::Address32(hash)), &atokens);
+						// <Balances<T>>::insert(asset_id, MultiAddress::Address32(hash), &atokens);
+
+					},
+					_ => Err(LookupError),
+				}
+				// let target_from_apn = T::Lookup::lookup(apn_name.into());
+				// <Balances<T>>::insert(asset_id, target_from_apn, &atokens);
 			}
 
 

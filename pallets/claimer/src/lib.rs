@@ -26,7 +26,7 @@ use frame_support::{
 	weights::{Weight, GetDispatchInfo},
 };
 
-use parity_scale_codec::{Codec, Decode, Encode};
+use parity_scale_codec::{Codec, Decode, Encode, EncodeLike};
 use sp_runtime::MultiAddress;
 
 // use sp_arithmetic;
@@ -114,7 +114,9 @@ pub trait WeightInfo {}
 impl WeightInfo for () {}
 /////////////////////////////////////////////////////////////////////////////////// //////////////
 
-pub trait ApnSet {
+pub trait ApnSet: //system::Config 
+// where [u8; 32]: EncodeLike<<Self as system::Config>::AccountId>
+{
 	type Name;
 
 	fn apnsset() -> BTreeSet<Self::Name>;
@@ -443,7 +445,7 @@ decl_error! {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 decl_module! {
-	pub struct Module<T: Config> for enum Call where origin: T::Origin {
+	pub struct Module<T: Config> for enum Call where origin: T::Origin{
 		fn deposit_event() = default;
 
 		type Error = Error<T>;
@@ -1082,7 +1084,6 @@ where // might be useful?
 	MultiAddress<T::AccountId, T::AccountIndex>: Codec,  {
 	// type Name = T::Name;
 	type Name = [u8; 32];
-
 	fn apnsset() -> BTreeSet<Self::Name> {
 		Self::registered_apns().into_iter().collect::<BTreeSet<_>>()
 		
