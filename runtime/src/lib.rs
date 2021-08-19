@@ -382,6 +382,8 @@ impl allocator::Config for Runtime {
 	type MetadataDepositBase = MetadataDepositBase;
 	type MetadataDepositPerByte = MetadataDepositPerByte;
 	type WeightInfo = ();
+	type Lookie = Claimer;
+	type AccountIndex = AccountIndex;
 }
 
 // impl pallet_assets::Config for Runtime {

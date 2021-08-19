@@ -79,8 +79,8 @@ pub trait Config: frame_system::Config {
 		type WeightInfo: WeightInfo;
 
 		// Might be needed idk, will need to be added to runtime/src/lib.rs
-		// type AccountIndex: frame_support::Parameter + sp_runtime::traits::Member + codec::Codec + Default + sp_runtime::traits::AtLeast32Bit + Copy;
-		// type Lookie: StaticLookup <Target = Self::AccountId> + StaticLookup <Source = MultiAddress<Self::AccountId, Self::AccountIndex>> ;  
+		type AccountIndex: frame_support::Parameter + sp_runtime::traits::Member + codec::Codec + Default + sp_runtime::traits::AtLeast32Bit + Copy;
+		type Lookie: StaticLookup <Target = Self::AccountId> + StaticLookup <Source = MultiAddress<Self::AccountId, Self::AccountIndex>> ;  
 }
 
 decl_storage! {
@@ -137,17 +137,26 @@ decl_module! {
 
 		/// Trade from APN account to APN account, there is so much extra code in the formal substrate implementation of this (frame/assets/src/functions.rs) . relevant in the future. 
 		#[weight = 0]
-		pub fn trade_tokens(origin, asset_id: T::AssetId, fromapn: T::AccountId, toapn: T::AccountId, amt: T::Balance1) -> DispatchResult {
+		pub fn trade_tokens(origin, 
+			asset_id: T::AssetId, 
+			fromapn: <T::Lookie as StaticLookup>::Source, 
+			toapn: <T::Lookie as StaticLookup>::Source, 
+			amt: T::Balance1) -> DispatchResult {
 			let _sender = ensure_signed(origin)?;
 			
-			let fromapn_account_balance = Self::balances(asset_id, &fromapn);
-			let toapn_account_balance = Self::balances(asset_id, &toapn);
+
+			let target_from = T::Lookie::lookup(fromapn)?;
+			let target_to = T::Lookie::lookup(toapn)?;
+
+
+			let fromapn_account_balance = Self::balances(asset_id, &target_from);
+			let toapn_account_balance = Self::balances(asset_id, &target_to);
 
 			let updated_fromapn_account_balance : T::Balance1 = fromapn_account_balance.checked_sub(&amt).unwrap();
 			let updated_toapn_account_balance : T::Balance1 = toapn_account_balance.checked_add(&amt).unwrap();
 
-			<Balances<T>>::insert(asset_id, &fromapn, updated_fromapn_account_balance);
-			<Balances<T>>::insert(asset_id, &toapn, updated_toapn_account_balance);
+			<Balances<T>>::insert(asset_id, &target_from, updated_fromapn_account_balance);
+			<Balances<T>>::insert(asset_id, &target_to, updated_toapn_account_balance);
 
 			// let mut source_account = Account::<T, I>::get(asset_id, &fromapn);
 
@@ -157,43 +166,46 @@ decl_module! {
 		// }
 
 		// Automatic airdrop dependant on registered APNAccounts from Claimer pallet has stalled out here -> https://github.com/Greenetwork/BLX_chain/tree/assets_integration
+		// code below has issues with borrowing and ownership :/
+		// #[weight = 0]
+		// pub fn issue_token_airdrop(origin, apn: Vec<<T::Lookie as StaticLookup>::Source>, atokens: T::Balance1) -> DispatchResult {
+		// 	let _sender = ensure_signed(origin)?;
+
+		// 	let asset_id = Self::next_asset_id();
+
+		// 	let length = Self::calculate_length(&apn);
+
+		// 	for i in 0..length {
+		// 		let current_apn = apn[i];
+		// 		let apn_acc = T::Lookie::lookup(current_apn)?;
+		// 		<Balances<T>>::insert(asset_id, &apn_acc, &atokens);
+		// 	}
+
+		// 	Ok(())
+		// }
+
+		// Automatic airdrop dependant on registered APNAccounts from Claimer pallet has stalled out here -> https://github.com/Greenetwork/BLX_chain/tree/assets_integration
+		// this version requires AccountIDs
 		#[weight = 0]
 		pub fn issue_token_airdrop(origin, apn: Vec<T::AccountId>, atokens: T::Balance1) -> DispatchResult {
 			let _sender = ensure_signed(origin)?;
-
-			// const ACCOUNT_ALICE: u64 = 1;
-			// const ACCOUNT_BOB: u64 = 2;
-			// const COUNT_AIRDROP_RECIPIENTS: u64 = 2;
-			
-			// let TOKENS_FIXED_SUPPLY = &atokens;
-			// const TOKENS_FIXED_SUPPLY: u64 = 100;
-
-			// ensure!(!COUNT_AIRDROP_RECIPIENTS.is_zero(), ArithmeticError::DivisionByZero);
 
 			let asset_id = Self::next_asset_id();
 
 			for i in 0..apn.len() {
 				<Balances<T>>::insert(asset_id, &apn[i], &atokens);
 			}
-
-	
-			// for (acc) in 
-			// let targets = apn.len();
-
-			// <NextAssetId<T>>::mutate(|asset_id| *asset_id += 1);
-			// <Balances<T>>::insert(asset_id, &apn, &atokens);
-			// <Balances<T>>::insert(asset_id, &ACCOUNT_BOB, TOKENS_FIXED_SUPPLY / COUNT_AIRDROP_RECIPIENTS);
-			// <TotalSupply<T>>::insert(asset_id, &atokens.checked_mul(targets); // spend time here figuring out how to multiply # of apn accounts by assets
-
-			// Self::deposit_event(RawEvent::Issued(asset_id, sender, TOKENS_FIXED_SUPPLY));
 			Ok(())
 		}
-
-
-
 	}
 }
 
-// impl<T:Config> Module<T> for {
+impl<T:Config> Module<T> {
 
-// }
+	pub fn calculate_length(
+		vec_apn: &Vec<<T::Lookie as StaticLookup>::Source>
+	) -> usize {
+		vec_apn.len()
+	}
+
+}
