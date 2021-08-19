@@ -88,7 +88,7 @@ decl_storage! {
 		/// Next available ID for user-created asset.
 		pub NextAssetId get(fn next_asset_id) : T::AssetId;
 
-		pub Balances:
+		pub Balances get(fn balances):
 			double_map hasher(twox_64_concat) T::AssetId, hasher(blake2_128_concat) T::AccountId => T::Balance1;
 
 		pub TotalSupply:
@@ -133,13 +133,33 @@ decl_module! {
 		// should be able to query all of the proxy accounts created for APN's by claimer pallet and then pass them to issue_token_airdrop
 		// pub fn allocate(origin, acft: T::Balance1) -> DispatchResult {
 		// 	let _sender = ensure_signed(origin)?;
+		
 
+		/// Trade from APN account to APN account, there is so much extra code in the formal substrate implementation of this (frame/assets/src/functions.rs) . relevant in the future. 
+		#[weight = 0]
+		pub fn trade_tokens(origin, asset_id: T::AssetId, fromapn: T::AccountId, toapn: T::AccountId, amt: T::Balance1) -> DispatchResult {
+			let _sender = ensure_signed(origin)?;
+			
+			let fromapn_account_balance = Self::balances(asset_id, &fromapn);
+			let toapn_account_balance = Self::balances(asset_id, &toapn);
+
+			let updated_fromapn_account_balance : T::Balance1 = fromapn_account_balance.checked_sub(&amt).unwrap();
+			let updated_toapn_account_balance : T::Balance1 = toapn_account_balance.checked_add(&amt).unwrap();
+
+			<Balances<T>>::insert(asset_id, &fromapn, updated_fromapn_account_balance);
+			<Balances<T>>::insert(asset_id, &toapn, updated_toapn_account_balance);
+
+			// let mut source_account = Account::<T, I>::get(asset_id, &fromapn);
+
+			Ok(())
+		}
 
 		// }
 
+		// Automatic airdrop dependant on registered APNAccounts from Claimer pallet has stalled out here -> https://github.com/Greenetwork/BLX_chain/tree/assets_integration
 		#[weight = 0]
 		pub fn issue_token_airdrop(origin, apn: Vec<T::AccountId>, atokens: T::Balance1) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
+			let _sender = ensure_signed(origin)?;
 
 			// const ACCOUNT_ALICE: u64 = 1;
 			// const ACCOUNT_BOB: u64 = 2;
@@ -168,9 +188,6 @@ decl_module! {
 			// Self::deposit_event(RawEvent::Issued(asset_id, sender, TOKENS_FIXED_SUPPLY));
 			Ok(())
 		}
-
-
-
 
 
 
