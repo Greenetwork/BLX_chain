@@ -7,5 +7,3 @@ members = [
     'pallets/*',
     'runtime',
 ]
-
-snow = "0.7.2"
