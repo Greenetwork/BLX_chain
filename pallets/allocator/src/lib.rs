@@ -163,6 +163,34 @@ decl_module! {
 			Ok(())
 		}
 
+		/// Trade from APN account to APN account, there is so much extra code in the formal substrate implementation of this (frame/assets/src/functions.rs) . relevant in the future. 
+		#[weight = 0]
+		pub fn trade_tokens_ids(origin, 
+			asset_id: T::AssetId, 
+			fromapn: T::AccountId, 
+			toapn: T::AccountId, 
+			amt: T::Balance1) -> DispatchResult {
+			let _sender = ensure_signed(origin)?;
+			
+
+			let target_from = fromapn;
+			let target_to = toapn;
+
+
+			let fromapn_account_balance = Self::balances(asset_id, &target_from);
+			let toapn_account_balance = Self::balances(asset_id, &target_to);
+
+			let updated_fromapn_account_balance : T::Balance1 = fromapn_account_balance.checked_sub(&amt).unwrap();
+			let updated_toapn_account_balance : T::Balance1 = toapn_account_balance.checked_add(&amt).unwrap();
+
+			<Balances<T>>::insert(asset_id, &target_from, updated_fromapn_account_balance);
+			<Balances<T>>::insert(asset_id, &target_to, updated_toapn_account_balance);
+
+			// let mut source_account = Account::<T, I>::get(asset_id, &fromapn);
+
+			Ok(())
+		}
+
 		// }
 
 		// Automatic airdrop dependant on registered APNAccounts from Claimer pallet has stalled out here -> https://github.com/Greenetwork/BLX_chain/tree/assets_integration
