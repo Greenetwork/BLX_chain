@@ -30,6 +30,7 @@ claimer = { path = '../pallets/claimer', default-features = false, version = '3.
 
 loose-lookup = { path = '../pallets/loose-lookup', default-features = false, version = '3.0.0'}
 
+allocator = { path = '../pallets/allocator', default-features = false, version = '3.0.0'}
 
 # Substrate dependencies
 frame-benchmarking = { default-features = false, optional = true, version = '3.0.0' }
@@ -39,6 +40,7 @@ frame-system = { default-features = false, version = '3.0.0' }
 frame-system-benchmarking = { default-features = false, optional = true, version = '3.0.0' }
 frame-system-rpc-runtime-api = { default-features = false, version = '3.0.0' }
 pallet-aura = { default-features = false, version = '3.0.0' }
+pallet-assets = {default-features = false, version = '3.0.0'}
 pallet-balances = { default-features = false, version = '3.0.0' }
 pallet-grandpa = { default-features = false, version = '3.0.0' }
 pallet-proxy = { default-features = false, version = '3.0.0' }
@@ -103,6 +105,7 @@ std = [
     'sp-transaction-pool/std',
     'sp-version/std',
     'claimer/std',
-    #'name-service/std',
+    'allocator/std',
     'loose-lookup/std',
+    'pallet-assets/std',
 ]

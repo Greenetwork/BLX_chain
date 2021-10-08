@@ -358,6 +358,51 @@ impl loose_lookup::Config for Runtime {
 	type AccountIndex = AccountIndex;
 	type Currency = Balances;
 }
+
+
+
+parameter_types! {
+	pub const AssetDepositBase: u64 = 1;
+	pub const ApprovalDeposit: u64 = 1;
+	pub const StringLimit: u32 = 50;
+	pub const MetadataDepositBase: u64 = 1;
+	pub const MetadataDepositPerByte: u64 = 1;
+	pub const AssetDepositPerZombie: u64 = 1;
+}
+
+impl allocator::Config for Runtime {
+	type Event = Event;
+	type Balance1 = u64;
+	type AssetId = u32;
+	type Currency = Balances;
+	type ForceOrigin = frame_system::EnsureRoot<AccountId>;
+	type AssetDepositBase = AssetDepositBase;
+	type AssetDepositPerZombie = AssetDepositPerZombie;
+	type StringLimit = StringLimit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type WeightInfo = ();
+	type Lookie = Claimer;
+	type AccountIndex = AccountIndex;
+}
+
+// impl pallet_assets::Config for Runtime {
+// 	type Event = Event;
+// 	type Balance = u64;
+// 	type AssetId = u32;
+// 	type Currency = Balances;
+	// type ForceOrigin = EnsureRoot<AccountId>;
+	// type AssetDeposit = AssetDeposit;
+	// type MetadataDepositBase = MetadataDepositBase;
+	// type MetadataDepositPerByte = MetadataDepositPerByte;
+	// type ApprovalDeposit = ApprovalDeposit;
+	// type StringLimit = StringLimit;
+	// type Freezer = ();
+	// type Extra = ();
+	// type WeightInfo = (); //pallet_assets::weights::SubstrateWeight<Runtime>;
+// }
+
+
 // impl pallet_proxy::Config for Runtime {
 // 	type Event = Event;
 // 	type Call = Call;
@@ -458,6 +503,8 @@ construct_runtime!(
 		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
 		Claimer: claimer::{Module, Call, Storage, Event<T>},
 		LooseLookup: loose_lookup::{Module, Call, Storage},
+		Allocator: allocator::{Module, Call, Storage, Event<T>},
+		// Assets: pallet_assets::{Pallet, Call, Storage, Event<T>},
 	}
 );
 

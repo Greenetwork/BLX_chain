@@ -71,8 +71,12 @@ decl_module! {
 			//assert_eq!(T::Lookie::lookup, Some(account));
 
 
-			match target_from_name {
-				target_from_account => <SimpleMap<T>>::insert(&target_from_account,5588)
+			// match target_from_name {
+			// 	target_from_account => <SimpleMap<T>>::insert(&target_from_account,5588)
+			// }
+
+			if target_from_name == target_from_account {
+				<SimpleMap<T>>::insert(&target_from_account,5588)
 			}
 
 			// Self::deposit_event(RawEvent::IstheDude(caller));
@@ -83,17 +87,17 @@ decl_module! {
 			Ok(())
 		}
 
-		#[weight = 0]
-		fn allocate_ACFT(origin, BasinAccount: <T::Lookie as StaticLookup>::Source, APNAccount: <T::Lookie as StaticLookup>::Source, amount: BalanceOf<T>) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
+		// #[weight = 0]
+		// fn allocate_ACFT(origin, BasinAccount: <T::Lookie as StaticLookup>::Source, APNAccount: <T::Lookie as StaticLookup>::Source, amount: BalanceOf<T>) -> DispatchResult {
+		// 	let caller = ensure_signed(origin)?;
 
-			let target_APNAccount = T::Lookie::lookup(APNAccount)?;
-			let target_BasinAccount = T::Lookie::lookup(BasinAccount)?;
+		// 	let target_APNAccount = T::Lookie::lookup(APNAccount)?;
+		// 	let target_BasinAccount = T::Lookie::lookup(BasinAccount)?;
 
-			T::Currency::transfer(&target_BasinAccount, &target_APNAccount,
-				amount, KeepAlive);
+		// 	T::Currency::transfer(&target_BasinAccount, &target_APNAccount,
+		// 		amount, KeepAlive);
 
-			Ok(())
-		}
+		// 	Ok(())
+		// }
 	}
 }
